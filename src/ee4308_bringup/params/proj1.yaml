@@ -37,6 +37,7 @@ turtle:
         goto_waypoint: "goto_waypoint" # {string} the service name to service a waypoint request
       topics:
         pose: "pose" # {string} the topic to listen to the estimated pose.
+        scan: "scan" # {string} topic name to get the laser scans of the robot.
         cmd_vel: "cmd_vel" # {string} the topic to publish the command velocities.
         lookahead: "lookahead" # {string} the topic to publish the lookahead point.
       nearby: 0.1 # {double} the threshold in meters to determine if a waypoint is close enough.
@@ -48,6 +49,8 @@ turtle:
       frequency: 20. # {double} the rate to run the controller (Hz)
       plan_frequency: 1. # {double} the rate to request a path (Hz)
       lookahead_lin_vel: 0.22 # {double} the lookahead linear velocity (m/s)
+      dist_thres: 0.5  # {double} threshold distance (m)
+      curve_thres: 0.5  # {double} curvature threshold (m)
   mapper:
     ros__parameters:
       topics:
