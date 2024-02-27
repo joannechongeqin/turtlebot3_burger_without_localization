@@ -18,12 +18,6 @@ log/
 *.so
 *.dylib
 
-# Ignore package-lock.json for npm
-package-lock.json
-
-# Ignore yarn.lock for yarn
-yarn.lock
-
 # Ignore .env files containing sensitive information
 .env
 
