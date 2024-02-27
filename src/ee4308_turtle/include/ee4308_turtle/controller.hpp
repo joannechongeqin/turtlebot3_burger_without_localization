@@ -10,6 +10,7 @@
 #include <nav_msgs/srv/get_plan.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
@@ -32,6 +33,7 @@ namespace ee4308::turtle
         struct Topics
         {
             std::string pose = "pose";       // the topic to subscribe to the robot's pose
+            std::string scan = "scan";       // the topic to subcribe to the LiDAR scan
             std::string cmd_vel = "cmd_vel"; // the topic to publish the twist commands
             std::string lookahead = "lookahead"; // the topic to publish the lookahead point
         } topics;
@@ -44,6 +46,8 @@ namespace ee4308::turtle
         double plan_frequency = 1; // the rate to request a path
         double frequency = 20;     // the rate to run the controller
         double lookahead_lin_vel = 0.1; // the default value of the lookahead linear velocity
+        double dist_thres = 0.1;   // threshold distance for proximity distance (m)
+        double curve_thres = 0.5;  // threshold curvature for curvature heuristic (m)
     };
 
     /**
@@ -54,7 +58,9 @@ namespace ee4308::turtle
     private:
         ControllerParameters params_;
         geometry_msgs::msg::Pose msg_pose_;                                             // subscribed message written by callback
+        std::vector<float> msg_ranges_;                                                 // subcribed message written by callback
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_pose_;             // subscriber
+        rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_scan_;         // subscriber
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;           // subscriber
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pub_lookahead_;           // subscriber
         rclcpp::Client<nav_msgs::srv::GetPlan>::SharedPtr client_plan_;                 // client
@@ -103,6 +109,10 @@ namespace ee4308::turtle
             get_parameter<std::string>("topics.pose", params_.topics.pose);
             RCLCPP_INFO_STREAM(get_logger(), "topics.pose: " << params_.topics.pose);
 
+            declare_parameter<std::string>("topics.scan", params_.topics.scan);
+            get_parameter<std::string>("topics.scan", params_.topics.scan);
+            RCLCPP_INFO_STREAM(get_logger(), "topics.scan: " << params_.topics.scan);
+
             declare_parameter<std::string>("topics.cmd_vel", params_.topics.cmd_vel);
             get_parameter<std::string>("topics.cmd_vel", params_.topics.cmd_vel);
             RCLCPP_INFO_STREAM(get_logger(), "topics.cmd_vel: " << params_.topics.cmd_vel);
@@ -146,6 +156,14 @@ namespace ee4308::turtle
             declare_parameter<double>("lookahead_lin_vel", params_.lookahead_lin_vel);
             get_parameter<double>("lookahead_lin_vel", params_.lookahead_lin_vel);
             RCLCPP_INFO_STREAM(get_logger(), "lookahead_lin_vel: " << params_.lookahead_lin_vel);
+
+            declare_parameter<double>("dist_thres", params_.dist_thres);
+            get_parameter<double>("dist_thres", params_.dist_thres);
+            RCLCPP_INFO_STREAM(get_logger(), "dist_thres: " << params_.dist_thres);
+
+            declare_parameter<double>("curve_thres", params_.curve_thres);
+            get_parameter<double>("curve_thres", params_.curve_thres);
+            RCLCPP_INFO_STREAM(get_logger(), "curve_thres: " << params_.curve_thres);
         }
 
         /**
@@ -158,15 +176,19 @@ namespace ee4308::turtle
             pub_lookahead_ = create_publisher<geometry_msgs::msg::PointStamped>(params_.topics.lookahead, 1);
 
             // Initialize messages with values that will never be written by their publishers.
+            msg_ranges_ = {};
             msg_pose_.position.z = NAN;
 
             // Initialize subscribers
             sub_pose_ = create_subscription<nav_msgs::msg::Odometry>(
                 params_.topics.pose, 1, std::bind(&ROSNodeController::subscriberCallbackPose, this, std::placeholders::_1));
 
+            sub_scan_ = create_subscription<sensor_msgs::msg::LaserScan>(
+                params_.topics.scan, rclcpp::SensorDataQoS(), std::bind(&ROSNodeController::subscriberCallbackScan, this, std::placeholders::_1));
+
             // Wait for messages to arrive.
             rclcpp::Rate rate(5);
-            while (rclcpp::ok() && (std::isnan(msg_pose_.position.z)))
+            while (rclcpp::ok() && (msg_ranges_.empty() || std::isnan(msg_pose_.position.z)))
             {
                 // RCLCPP_INFO_STREAM(get_logger(), "Waiting for topics...");
                 rclcpp::spin_some(get_node_base_interface());
@@ -201,6 +223,11 @@ namespace ee4308::turtle
             const std::lock_guard<std::mutex> lock(mutex_pose_);
             msg_pose_ = msg.pose.pose;
         }
+
+        /**
+         * The LIDAR scan topic's subscriber callback
+         */
+        void subscriberCallbackScan(sensor_msgs::msg::LaserScan msg) { msg_ranges_ = msg.ranges; }
 
         /**
          * Gets the robot pose. Thread safe.
@@ -339,14 +366,12 @@ namespace ee4308::turtle
 
             // unconstrained velocities
             double new_lin_vel = params_.lookahead_lin_vel;
-            double new_ang_vel = curvature * new_lin_vel;
 
             // reverse the robot if waypoint lies at the back of the robot (x' is negative)
             double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
-            if (xx < 0) {
+            if (xx < 0) 
                 new_lin_vel = -new_lin_vel;
-                new_ang_vel = -new_ang_vel;
-            }
+            double new_ang_vel = curvature * new_lin_vel;
 
             // linear acceleration constraint
             double new_lin_acc = (new_lin_vel - lin_vel) / elapsed;
@@ -371,6 +396,14 @@ namespace ee4308::turtle
                 ang_vel = new_ang_vel;
             else
                 ang_vel = params_.max_ang_vel * sgn(new_ang_vel);
+            
+            // Regulated Pure Pursuit (Curvature Heuristic)
+            double curv_thres = params_.curve_thres;
+            if (curvature > curv_thres)
+                lin_vel = lin_vel * curv_thres / curvature;
+
+            // Proximity Heuristic
+            proximity_heuristic(msg_ranges_, lin_vel);
 
 
             // V2d error_axes = lookahead_point - rbt_pos;
@@ -398,6 +431,24 @@ namespace ee4308::turtle
             // publish the look ahead point for rviz
             publishLookahead(lookahead_point);
 
+        }
+
+        /**
+        * Regulate linear velocity of the robot using proximity heuristic.
+        * @param lin_vel The computed linear velocity of the robot.
+        * @param ranges The LIDAR scan ranges from the sensor_msgs::msg::LaserScan::ranges.
+        */
+        double proximity_heuristic(const std::vector<float> &ranges, double &lin_vel){
+            // for every ray in scan,
+            double threshold = params_.dist_thres;
+            for (int deg = 0; deg < 360; ++deg){
+                double range = ranges[deg];
+                if (range <= threshold){
+                    lin_vel *= range / threshold;
+                    break;
+                }
+            }
+            return lin_vel;
         }
 
         /**
