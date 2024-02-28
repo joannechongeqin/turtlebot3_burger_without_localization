@@ -403,7 +403,7 @@ namespace ee4308::turtle
                 lin_vel = lin_vel * curv_thres / curvature;
 
             // Proximity Heuristic
-            proximity_heuristic(msg_ranges_, lin_vel);
+            // proximity_heuristic(msg_ranges_, lin_vel);
 
 
             // V2d error_axes = lookahead_point - rbt_pos;
