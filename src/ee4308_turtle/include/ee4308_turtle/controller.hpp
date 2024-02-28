@@ -324,7 +324,7 @@ namespace ee4308::turtle
 
                 // move the robot // FIXME
                 moveRobot(plan_.back(), rbt_dof3.position, rbt_dof3.orientation,
-                          lin_vel, ang_vel, lin_acc, ang_acc, last_move_time);
+                          lin_vel, ang_vel, lin_acc, ang_acc, last_move_time, msg_ranges_);
 
                 rate.sleep();
             }
@@ -348,7 +348,7 @@ namespace ee4308::turtle
          */
         void moveRobot(const V2d lookahead_point, const V2d rbt_pos, const double rbt_ang, // read only
                         double &lin_vel, double &ang_vel, double &lin_acc, double &ang_acc, // previous values
-                        rclcpp::Time &last_move_time)
+                        rclcpp::Time &last_move_time, const std::vector<float> &ranges)
         {
             // get the duration elapsed since last call
             double elapsed = (now() - last_move_time).seconds(); // the elapsed time since the last call, in seconds.
@@ -399,17 +399,13 @@ namespace ee4308::turtle
                 ang_vel = -ang_vel;
             }
 
-<<<<<<< HEAD
-            // Proximity Heuristic
-=======
-            // // Regulated Pure Pursuit (Curvature Heuristic)
-            // double curv_thres = params_.curve_thres;
-            // if (curvature > curv_thres)
-            //     lin_vel = lin_vel * curv_thres / curvature;
+            // Regulated Pure Pursuit (Curvature Heuristic)
+            double curv_thres = params_.curve_thres;
+            if (curvature > curv_thres)
+                 lin_vel = lin_vel * curv_thres / curvature;
 
-            // // Proximity Heuristic
->>>>>>> d024e6e8ad2beab38955be4767eaa7dacef0b371
-            // proximity_heuristic(msg_ranges_, lin_vel);
+            // Proximity Heuristic
+            lin_vel = proximity_heuristic(ranges, lin_vel);
 
 
             // V2d error_axes = lookahead_point - rbt_pos;
