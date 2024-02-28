@@ -17,7 +17,7 @@ turtle:
       frequency: 40. # {double} how often the robot's motion is estimated (Hz).
       wheel_radius: 0.033 # {double} the wheel radius (m).
       axle_track: 0.16 # {double} the axle track (m).
-      straight_thres: 0.015 # {double} the angular threshold (rad) to switch between straight and curved odometry.
+      straight_thres: 0.02 # {double} the angular threshold (rad) to switch between straight and curved odometry.
 # END OF FIXME
 
   planner_smoother:
@@ -42,7 +42,7 @@ turtle:
         lookahead: "lookahead" # {string} the topic to publish the lookahead point.
       nearby: 0.1 # {double} the threshold in meters to determine if a waypoint is close enough.
       lookahead: 0.1 # {double} the maximum lookahead distance
-      max_lin_vel: 0.05 # {double} the maximum linear velocity (m/s)
+      max_lin_vel: 0.06 # {double} the maximum linear velocity (m/s)
       max_lin_acc: 1. # {double} the maxmum linear acceleration (m/s/s)
       max_ang_vel: 0.4 # {double} the maximum angular velocity (rad/s)
       max_ang_acc: 3. # {double} the maxmum angular acceleration (rad/s/s)
