@@ -366,11 +366,6 @@ namespace ee4308::turtle
 
             // unconstrained velocities
             double new_lin_vel = params_.lookahead_lin_vel;
-
-            // reverse the robot if waypoint lies at the back of the robot (x' is negative)
-            double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
-            if (xx < 0) 
-                new_lin_vel = -new_lin_vel;
             double new_ang_vel = curvature * new_lin_vel;
 
             // linear acceleration constraint
@@ -397,12 +392,23 @@ namespace ee4308::turtle
             else
                 ang_vel = params_.max_ang_vel * sgn(new_ang_vel);
             
-            // Regulated Pure Pursuit (Curvature Heuristic)
-            double curv_thres = params_.curve_thres;
-            if (curvature > curv_thres)
-                lin_vel = lin_vel * curv_thres / curvature;
+            // reverse the robot if waypoint lies at the back of the robot (x' is negative)
+            double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
+            if (xx < 0) {
+                lin_vel = -lin_vel;
+                ang_vel = -ang_vel;
+            }
 
+<<<<<<< HEAD
             // Proximity Heuristic
+=======
+            // // Regulated Pure Pursuit (Curvature Heuristic)
+            // double curv_thres = params_.curve_thres;
+            // if (curvature > curv_thres)
+            //     lin_vel = lin_vel * curv_thres / curvature;
+
+            // // Proximity Heuristic
+>>>>>>> d024e6e8ad2beab38955be4767eaa7dacef0b371
             // proximity_heuristic(msg_ranges_, lin_vel);
 
 
