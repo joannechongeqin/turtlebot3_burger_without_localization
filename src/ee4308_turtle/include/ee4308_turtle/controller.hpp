@@ -361,6 +361,7 @@ namespace ee4308::turtle
 
             // curvature
             V2d diff = lookahead_point - rbt_pos;
+            double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
             double yy = diff.y * cos(rbt_ang) - diff.x * sin(rbt_ang);
             double curvature = 2 * yy / diff.normsq();
 
@@ -387,45 +388,27 @@ namespace ee4308::turtle
             new_ang_vel = ang_vel + new_ang_acc * elapsed;  
 
             // angular velocity constraint.
-            //Test
             if (abs(new_ang_vel) < params_.max_ang_vel)
                 ang_vel = new_ang_vel;
             else
                 ang_vel = params_.max_ang_vel * sgn(new_ang_vel);
             
             // reverse the robot if waypoint lies at the back of the robot (x' is negative)
-            double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
             if (xx < 0) {
                 lin_vel = -lin_vel;
                 ang_vel = -ang_vel;
             }
 
-            // Regulated Pure Pursuit (Curvature Heuristic)
+            // Curvature Heuristic
             double curv_thres = params_.curve_thres;
-            if (curvature > curv_thres)
-                 lin_vel = lin_vel * curv_thres / curvature;
-
+            if (curvature > curv_thres){
+                lin_vel *= curv_thres / curvature;
+                std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
+            }
+        
             // Proximity Heuristic
             lin_vel = proximity_heuristic(ranges, lin_vel);
 
-
-            // V2d error_axes = lookahead_point - rbt_pos;
-            // double error_ang = atan2(error_axes.y, error_axes.x) - rbt_ang;
-            // error_ang = limit_angle(error_ang); // constrain to -pi and pi radians.
-            // double error_lin = error_axes.norm();
-
-            // if (std::abs(error_ang) > M_PI / 4)
-            //     error_lin = 0; // large angular errors will cause the robot to stop moving linearly.
-            // else
-            //     error_lin *= (1 - std::abs(error_ang) / (M_PI / 4));
-
-            // lin_vel = error_lin * 0.1;
-            // if (lin_vel > params_.max_lin_vel)
-            //     lin_vel = params_.max_lin_vel;
-
-            // ang_vel = error_ang * 0.1;
-            // if (ang_vel > params_.max_ang_vel)
-            //     ang_vel = params_.max_ang_vel;
             // ==== end of FIXME ====
 
             // publish the linear and angular velocities, 
@@ -448,6 +431,7 @@ namespace ee4308::turtle
                 double range = ranges[deg];
                 if (range <= threshold){
                     lin_vel *= range / threshold;
+                    std::cout << "Robot too close to obstacle, reducing velocity to: " << lin_vel << std::endl;
                     break;
                 }
             }
