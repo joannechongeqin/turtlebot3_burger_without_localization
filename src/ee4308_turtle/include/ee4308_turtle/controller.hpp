@@ -378,15 +378,16 @@ namespace ee4308::turtle
             if (abs(new_lin_vel) < params_.max_lin_vel)
                 lin_vel = new_lin_vel;
             else
-                lin_vel = params_.max_lin_vel * sgn(new_lin_vel);
+                lin_vel = params_.max_lin_vel * sgn(new_lin_vel);  
 
             // angular acceleration constraint
             double new_ang_acc = (new_ang_vel - ang_vel) / elapsed;
             if (abs(new_ang_acc) >= params_.max_ang_acc)
                 new_ang_acc = params_.max_ang_acc * sgn(new_ang_acc);
-            new_ang_vel = ang_vel + new_ang_acc * elapsed;
+            new_ang_vel = ang_vel + new_ang_acc * elapsed;  
 
-            // angular velocity constraint
+            // angular velocity constraint.
+            //Test
             if (abs(new_ang_vel) < params_.max_ang_vel)
                 ang_vel = new_ang_vel;
             else
