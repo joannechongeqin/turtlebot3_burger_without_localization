@@ -250,17 +250,17 @@ namespace ee4308::turtle
          */
         std::vector<V2d> findTurningPoints(const std::vector<V2d> &path) {
             std::vector<V2d> turning_points;
-            for (size_t i = 0; i < path_.size(); ++i) {
-                V2d coord = path_[i]; // x_i
+            for (size_t i = 0; i < path.size(); ++i) {
+                V2d coord = path[i]; // x_i
                 // std::cout << "current coord: " << coord << std::endl;
 
-                if (i == 0 || i == path_.size() - 1) { // keep start and goal point
+                if (i == 0 || i == path.size() - 1) { // keep start and goal point
                     turning_points.push_back(coord); 
                     continue;
                 }
                 
-                V2d x_prev = path_[i - 1]; // x_(i-1)
-                V2d x_next = path_[i + 1]; // x_(i+1)
+                V2d x_prev = path[i - 1]; // x_(i-1)
+                V2d x_next = path[i + 1]; // x_(i+1)
                 V2d v_curr = coord - x_prev; // v_i
                 V2d v_next = x_next - coord; // v_(i+1)
                 double v_cross_product = v_curr.x * v_next.y - v_curr.y * v_next.x; // v_i x v_(i-1) // can use v_curr.cross(v_next) also
@@ -284,15 +284,11 @@ namespace ee4308::turtle
         }
 
         /**
-         * Smooths the path into a more feasible trajectory
+         * Implement smoother using cubic hermite splines 
          */
-        const std::vector<V2d> &smooth() // FIXME
-        {
-
-            // savitsky_golay_smoother(path_);
-
+        std::vector<V2d> smootherCubicHermiteSplines(const std::vector<V2d> &path) {
             // find turning points along found path
-            std::vector<V2d>  turning_points = findTurningPoints(path_);
+            std::vector<V2d>  turning_points = findTurningPoints(path);
 
             // for each segment on the new path, generate the cubic spline
             std::vector<V2d> smooth_path;
@@ -344,10 +340,19 @@ namespace ee4308::turtle
             }
 
             smooth_path.push_back(turning_points.back()); // add last turning point to final smooth path
+            return smooth_path;
+        }
 
-            for (V2d point : smooth_path) {
-                std::cout << point << std::endl;
-            }
+        /**
+         * Smooths the path into a more feasible trajectory
+         */
+        const std::vector<V2d> &smooth() // FIXME
+        {
+
+            // savitsky_golay_smoother(path_);
+
+            // cubic hermite splines smoother
+            std::vector<V2d> smooth_path = smootherCubicHermiteSplines(path_);
 
             // replace the path_ with the smooth_path
             path_ = smooth_path;
@@ -367,7 +372,6 @@ namespace ee4308::turtle
             }
             Eigen::MatrixXd a = (J.transpose() * J).inverse() * J.transpose(); // (J^T * J)^-1 * J^T
             Eigen::MatrixXd a_first_row = a.row(0);
-
 
         }
 
