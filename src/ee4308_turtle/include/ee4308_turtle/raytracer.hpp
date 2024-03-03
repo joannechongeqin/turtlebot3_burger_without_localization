@@ -75,8 +75,9 @@ namespace ee4308::turtle
          * Goes to the next root vertex and returns it.
          * Use adjCellOfVertex to get front cell.
          */
-        const V2 &next()
+        std::pair<V2, double> next()
         {
+            double recorded_len;
             auto getNext = [this](const int &d)
             {
                 root_(d) += sgn_(d);
@@ -85,19 +86,31 @@ namespace ee4308::turtle
             };
 
             if (len_.x - len_.y < -THRES)
+            {
+                recorded_len = len(0);
                 getNext(0); // x crossed a grid line before y crossed a grid line
+            }                
             else if (len_.x - len_.y > THRES)
+            {
+                recorded_len = len(1);
                 getNext(1); // y crossed a grid line before x crossed a grid line
+            }
             else
             { // x and y crossed grid line at same location
                 if (len_.x < REACHED_THRES)
+                {
+                    recorded_len = len(0);
                     getNext(0);
+                }
 
                 if (len_.y < REACHED_THRES)
+                {
+                    recorded_len = len(1);
                     getNext(1);
+                }
             }
 
-            return root_;
+            return std::make_pair(root_, recorded_len);
         }
 
         /**
