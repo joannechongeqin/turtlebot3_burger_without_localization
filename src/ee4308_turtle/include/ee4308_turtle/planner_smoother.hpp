@@ -288,7 +288,7 @@ namespace ee4308::turtle
          */
         std::vector<V2d> smootherCubicHermiteSplines(const std::vector<V2d> &path) {
             // find turning points along found path
-            std::vector<V2d>  turning_points = findTurningPoints(path);
+            std::vector<V2d> turning_points = findTurningPoints(path);
 
             // for each segment on the new path, generate the cubic spline
             std::vector<V2d> smooth_path;
@@ -344,24 +344,9 @@ namespace ee4308::turtle
         }
 
         /**
-         * Smooths the path into a more feasible trajectory
+         * Implement smoother using Savitsky-Golay Moving Average
          */
-        const std::vector<V2d> &smooth() // FIXME
-        {
-
-            // savitsky_golay_smoother(path_);
-
-            // cubic hermite splines smoother
-            std::vector<V2d> smooth_path = smootherCubicHermiteSplines(path_);
-
-            // replace the path_ with the smooth_path
-            path_ = smooth_path;
-
-            return path(); // returns path_
-        }
-
-
-        void savitsky_golay_smoother(const std::vector<V2d> path, const int& half_window_size = 2, const int& poly_order = 3) {
+        std::vector<V2d> savitsky_golay_smoother(const std::vector<V2d> &path, const int &half_window_size = 2, const int &poly_order = 3) {
             const int m = half_window_size, p = poly_order; // default cubic polynomial over 5 points
             const int row_size  = 2 * m + 1, col_size = p + 1;
             Eigen::MatrixXd J(row_size, col_size); // Vandermonde matrix, which is a (2m+1)×(p+1) matrix
@@ -373,7 +358,49 @@ namespace ee4308::turtle
             Eigen::MatrixXd a = (J.transpose() * J).inverse() * J.transpose(); // (J^T * J)^-1 * J^T
             Eigen::MatrixXd a_first_row = a.row(0);
 
+            int n = path.size();
+            std::vector<V2d> smooth_path;
+            smooth_path.push_back(path[0]); // add start point to final smooth path
+
+            for (int j = 1; j < n - 1; j++) { // iterate from second (1) point to second last (n-2) point
+                V2d smoothed_point = V2d(0, 0);
+                int a_idx = 0;
+                for (int i = -m; i <= m; i++) {
+                    int idx = j + i;
+                    double a_val = a_first_row(a_idx);
+                    if (idx < 0) { // point lies before the path, use x0 (first point)
+                        smoothed_point += V2d(a_val* path[0].x, a_val * path[0].y);
+                    } else if (idx >= n) { // point lies after path, use xn (last point)
+                        smoothed_point += V2d(a_val* path[n - 1].x, a_val * path[n - 1].y);
+                    } else {
+                        smoothed_point += V2d(a_val* path[idx].x, a_val * path[idx].y);
+                    }
+                    a_idx++;
+                }
+                smooth_path.push_back(smoothed_point);
+            }
+            smooth_path.push_back(path[n - 1]); // add last point to final smooth path
+
+            return smooth_path;
         }
+
+        /**
+         * Smooths the path into a more feasible trajectory
+         */
+        const std::vector<V2d> &smooth() // FIXME
+        {
+            // cubic hermite splines smoother
+            std::vector<V2d> cubicHermite_smooth_path = smootherCubicHermiteSplines(path_);
+
+            // savitsky-golay moving average smoother
+            std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 5);
+
+            // replace the path_ with the smooth_path
+            path_ = cubicHermite_smooth_path;
+
+            return path(); // returns path_
+        }
+
 
 
         /**
