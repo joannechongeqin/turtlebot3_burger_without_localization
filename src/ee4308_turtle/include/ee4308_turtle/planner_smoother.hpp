@@ -160,6 +160,18 @@ namespace ee4308::turtle
          * @param start_coord world coordinates to search from.
          * @param goal_coord world coordinates to search to.
          */
+
+
+        // Calculating h_cost -> self defined
+        double calc_h_cost(const V2 &curr_coord, const V2 &goal_coord)
+        {
+            
+            V2 diff_squared = goal_coord - curr_coord;
+            double diff = sqrt(diff_squared.normsq());
+
+            return diff;
+        }        
+
         const std::vector<V2d> &run(const V2d &start_coord, const V2d &goal_coord)
         { // changed to A*
             // clear path
@@ -176,7 +188,7 @@ namespace ee4308::turtle
                 long idx = inflation_layer_.cellToIdx(start_cell);
                 PlannerNode *node = &nodes[idx];
                 node->cost_g = 0;
-                // node->cost_h = 0; // FIX ME
+                node->cost_h = calc_h_cost(start_cell, goal_cell); // FIX ME
                 node->cost_f = 0;
                 node->cell = start_cell;
                 open_list_.queue(node);
@@ -230,7 +242,7 @@ namespace ee4308::turtle
                         neighbor_node->cost_g = test_g;
                         // h_cost = distance between neighbor_node and goal point // using manhattan distance in this case
                         neighbor_node->cost_h = abs(goal_cell.x - neighbor_cell.x) + abs(goal_cell.y - neighbor_cell.y); // FIXME 
-                        neighbor_node->cost_f = neighbor_node->cost_g + neighbor_node->cost_h; // FIXME // f_cost ← h_cost + (neighbor_node's g cost)
+                        neighbor_node->cost_f = calc_h_cost(neighbor_cell, goal_cell); // FIXME // f_cost ← h_cost + (neighbor_node's g cost)
                         neighbor_node->parent = expanded_node;
 
                         open_list_.queue(neighbor_node);
