@@ -344,7 +344,9 @@ namespace ee4308::turtle
         }
 
         /**
-         * Implement smoother using Savitsky-Golay Moving Average
+         * Implement smoother using Savitsky-Golay Moving Average 
+         * assume points at regular intervals aka A* path
+         * TODO: if Theta* neede interpolate so that points are regularly spaced
          */
         std::vector<V2d> savitsky_golay_smoother(const std::vector<V2d> &path, const int &half_window_size = 2, const int &poly_order = 3) {
             const int m = half_window_size, p = poly_order; // default cubic polynomial over 5 points
@@ -372,7 +374,7 @@ namespace ee4308::turtle
                         smoothed_point += V2d(a_val* path[0].x, a_val * path[0].y);
                     } else if (idx >= n) { // point lies after path, use xn (last point)
                         smoothed_point += V2d(a_val* path[n - 1].x, a_val * path[n - 1].y);
-                    } else {
+                    } else { // for points with index m to n - m
                         smoothed_point += V2d(a_val* path[idx].x, a_val * path[idx].y);
                     }
                     a_idx++;
