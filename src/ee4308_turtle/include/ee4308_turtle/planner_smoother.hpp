@@ -6,6 +6,7 @@
 #include <list>
 #include <array>
 #include <mutex>
+#include <Eigen/Dense>
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
@@ -244,22 +245,10 @@ namespace ee4308::turtle
             return path();
         }
 
-
-        V2d calcVelocityDirection(const V2d &point, const V2d &point_prev, const V2d &point_next) {
-            // velocity direction at each turning point = average of unit directional vectors of both adjacent segments
-            // ^ i think this means if at p2, velocity direction is average of line direction p1-p2 and line direction p2-p3
-            V2d v1 = point - point_prev;
-            V2d v2 = point_next - point;
-            V2d v = (v1 / v1.norm() + v2 / v2.norm()) / 2;
-            return v;
-        }
-
         /**
-         * Smooths the path into a more feasible trajectory
+         * Find turning points on a path // helper function for cubic hermite splines smoother
          */
-        const std::vector<V2d> &smooth() // FIXME
-        {
-            // find turning points along found path
+        std::vector<V2d> findTurningPoints(const std::vector<V2d> &path) {
             std::vector<V2d> turning_points;
             for (size_t i = 0; i < path_.size(); ++i) {
                 V2d coord = path_[i]; // x_i
@@ -277,9 +266,33 @@ namespace ee4308::turtle
                 double v_cross_product = v_curr.x * v_next.y - v_curr.y * v_next.x; // v_i x v_(i-1) // can use v_curr.cross(v_next) also
                 if (abs(v_cross_product) > 1e-5) {  // if cross product !=0, the three points are not parallel, turning point found at x_i
                     turning_points.push_back(coord);
-                    // std::cout << "added turning point: " << coord << std::endl;
                 }
-            } // end of finding turning points
+            } 
+            return turning_points;
+        }
+
+        /**
+         * Calculate velocity direction at each turning point // helper function for cubic hermite splines smoother
+         */
+        V2d calcVelocityDirection(const V2d &point, const V2d &point_prev, const V2d &point_next) {
+            // velocity direction at each turning point = average of unit directional vectors of both adjacent segments
+            // ^ i think this means if at p2, velocity direction is average of line direction p1-p2 and line direction p2-p3
+            V2d v1 = point - point_prev;
+            V2d v2 = point_next - point;
+            V2d v = (v1 / v1.norm() + v2 / v2.norm()) / 2;
+            return v;
+        }
+
+        /**
+         * Smooths the path into a more feasible trajectory
+         */
+        const std::vector<V2d> &smooth() // FIXME
+        {
+
+            // savitsky_golay_smoother(path_);
+
+            // find turning points along found path
+            std::vector<V2d>  turning_points = findTurningPoints(path_);
 
             // for each segment on the new path, generate the cubic spline
             std::vector<V2d> smooth_path;
@@ -341,6 +354,23 @@ namespace ee4308::turtle
 
             return path(); // returns path_
         }
+
+
+        void savitsky_golay_smoother(const std::vector<V2d> path, const int& half_window_size = 2, const int& poly_order = 3) {
+            const int m = half_window_size, p = poly_order; // default cubic polynomial over 5 points
+            const int row_size  = 2 * m + 1, col_size = p + 1;
+            Eigen::MatrixXd J(row_size, col_size); // Vandermonde matrix, which is a (2m+1)×(p+1) matrix
+            for (int r = 0; r < row_size; r++) {
+                for (int c = 0; c < col_size; c++) {
+                    J(r, c) = pow(-m + r, c);
+                }
+            }
+            Eigen::MatrixXd a = (J.transpose() * J).inverse() * J.transpose(); // (J^T * J)^-1 * J^T
+            Eigen::MatrixXd a_first_row = a.row(0);
+
+
+        }
+
 
         /**
          * Updates the local copy of the cost map (inflation layer) to search the paths on.
