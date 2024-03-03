@@ -68,7 +68,7 @@ namespace ee4308::turtle
             len_ = 0;
             root_ -= sgn_;
 
-            return next();
+            return next().root_;
         }
 
         /**
