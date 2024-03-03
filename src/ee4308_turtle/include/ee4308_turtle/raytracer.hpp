@@ -35,7 +35,7 @@ namespace ee4308::turtle
          * @param vertex_from The grid coordinates where the ray begins.
          * @param vertex_to The grid coordinates where the ray ends.
          */
-        const V2 &init(const V2d &vertex_from, const V2d &vertex_to)
+        std::pair<V2, double> init(const V2d &vertex_from, const V2d &vertex_to)
         {
             from_ = vertex_from;
             to_ = vertex_to;
@@ -68,7 +68,7 @@ namespace ee4308::turtle
             len_ = 0;
             root_ -= sgn_;
 
-            return next().root_;
+            return next();
         }
 
         /**
