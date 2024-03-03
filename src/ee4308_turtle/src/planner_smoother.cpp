@@ -97,7 +97,7 @@ namespace ee4308::turtle
     {
     private:
         PlannerSmootherParameters params_;
-        // RayTracer ray_tracer_; // for Theta*. Note that the center of cells have grid coordinates (##.5, ##.5).
+        RayTracer ray_tracer_; // for Theta*. Note that the center of cells have grid coordinates (##.5, ##.5).
 
         Costmap inflation_layer_;
         OpenList open_list_;
