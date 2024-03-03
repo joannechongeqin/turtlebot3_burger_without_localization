@@ -400,11 +400,7 @@ namespace ee4308::turtle
             }
 
             // Curvature Heuristic
-            double curv_thres = params_.curve_thres;
-            if (curvature > curv_thres){
-                lin_vel *= curv_thres / curvature;
-                std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
-            }
+           lin_vel = curvature_heuristic(curvature, lin_vel);
         
             // Proximity Heuristic
             lin_vel = proximity_heuristic(ranges, lin_vel);
@@ -417,6 +413,20 @@ namespace ee4308::turtle
             // publish the look ahead point for rviz
             publishLookahead(lookahead_point);
 
+        }
+
+        /**
+        * Regulate linear velocity of the robot using proximity heuristic.
+        * @param lin_vel The computed linear velocity of the robot.
+        * @param curvature The computed curvature of the robot's path.
+        */
+        double curvature_heuristic(double &curvature, double &lin_vel) {
+             double curv_thres = params_.curve_thres;
+            if (curvature > curv_thres){
+                lin_vel *= curv_thres / curvature;
+                std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
+            }
+            return lin_vel;
         }
 
         /**
