@@ -395,10 +395,10 @@ namespace ee4308::turtle
             std::vector<V2d> cubicHermite_smooth_path = smootherCubicHermiteSplines(path_);
 
             // savitsky-golay moving average smoother
-            std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 5);
+            std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 2, 3);
 
             // replace the path_ with the smooth_path
-            path_ = cubicHermite_smooth_path;
+            path_ = savitskyGolay_smooth_path;
 
             return path(); // returns path_
         }

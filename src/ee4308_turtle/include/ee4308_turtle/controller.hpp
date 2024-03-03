@@ -362,10 +362,14 @@ namespace ee4308::turtle
             // curvature
             V2d diff = lookahead_point - rbt_pos;
             double yy = diff.y * cos(rbt_ang) - diff.x * sin(rbt_ang);
+            double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
             double curvature = 2 * yy / diff.normsq();
 
             // unconstrained velocities
             double new_lin_vel = params_.lookahead_lin_vel;
+            if (xx<0){
+                new_lin_vel = -new_lin_vel;
+            }
             double new_ang_vel = curvature * new_lin_vel;
 
             // linear acceleration constraint
@@ -386,19 +390,18 @@ namespace ee4308::turtle
                 new_ang_acc = params_.max_ang_acc * sgn(new_ang_acc);
             new_ang_vel = ang_vel + new_ang_acc * elapsed;  
 
-            // angular velocity constraint.
-            //Test
+            // angular velocity constraint
             if (abs(new_ang_vel) < params_.max_ang_vel)
                 ang_vel = new_ang_vel;
             else
                 ang_vel = params_.max_ang_vel * sgn(new_ang_vel);
             
+            /*
             // reverse the robot if waypoint lies at the back of the robot (x' is negative)
-            double xx = diff.x * cos(rbt_ang) + diff.y * sin(rbt_ang);
             if (xx < 0) {
                 lin_vel = -lin_vel;
                 ang_vel = -ang_vel;
-            }
+            }*/
 
             // Regulated Pure Pursuit (Curvature Heuristic)
             double curv_thres = params_.curve_thres;
