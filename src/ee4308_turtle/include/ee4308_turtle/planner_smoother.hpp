@@ -162,7 +162,7 @@ namespace ee4308::turtle
          */
 
 
-        // Calculating h_cost -> self defined
+        // Calculating h_cost -> self defined, different from calc_euclidean_dist in case using manhatten
         double calc_h_cost(const V2 &curr_coord, const V2 &goal_coord)
         {
             
@@ -170,7 +170,20 @@ namespace ee4308::turtle
             double diff = sqrt(diff_squared.normsq());
 
             return diff;
-        }        
+        } 
+
+        double calc_euclidean_dist(const V2 &start_coord, const V2 &end_coord)
+        {
+            V2 diff_squared = start_coord - end_coord;
+            double diff = sqrt(diff_squared.normsq());
+
+            return diff;
+        }
+
+        double lethal_cost()
+        {
+            return 0.0;
+        }       
 
         const std::vector<V2d> &run(const V2d &start_coord, const V2d &goal_coord)
         { // changed to A*
@@ -211,6 +224,9 @@ namespace ee4308::turtle
                     break; // break to clear open_list
                 }
 
+                // assign parent_node as expanded node parent
+                PlannerNode *const parent_node = expanded_node->parent;
+
                 // search the neighbors
                 for (const Relative &neighbor : neighbor_lut_)
                 {
@@ -230,10 +246,49 @@ namespace ee4308::turtle
                     // skip if neighbor is already in closed list (has to be cheaper than expanded node)
                     if (neighbor_node->expanded == true)
                         continue;
+                    
+                    // Start of edits for theta *
+                    // Initialise first root vertex found by los
+                    V2 root_vertex = ray_tracer_.init(parent_node->cell + 0.5, neighbor_cell + 0.5);
 
+                    // Variables needed for theta*
+                    double los_length, test_g;
+
+                    // loops until ray tracer detects that it is reached
+                    while (!(ray_tracer_.reached()))
+                    {
+                        // Initialise cell_coord of current root_vertex
+                        V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, this->getSgnDir());
+
+                        // Initilise test g cost as 0
+                        test_g = 0;
+
+                        // Check if cell cost is greater than lethal cost
+                        long cell_index = inflation_layer_.cellToIdx(cell_coord);
+                        PlannerNode *const cell_node = &nodes[cell_index];
+                        if (cell_node->cost_f > lethal_cost()){
+                            test_g = calc_euclidean_dist(expanded_node->cell, neighbor_node->cell) * expanded_node->cost_f;
+                            parent_node = expanded_node;
+                            break;
+                        }
+                        else if (cell_node->cost_f == 0){// check if cell cost is equal to 0
+                            cell_node->cost_f = 1;
+                        }
+                        // this function should return the length needed to update g_cost and the next vertex coordinate
+                        auto p = ray_tracer_.next();
+                        root_vertex = p.root_;
+                        los_length = p.recorded_len;
+
+                        // update the test_g_cost
+                        test_g = test_g + los_length * cell_node->cost_f
+
+                    }
+
+                    // theta * will replace from here
                     // find the cost to reach the neighbor from the current node, with extra costs from the inflation layer.
-                    double diff_g = neighbor.value * (inflation_layer_(neighbor_idx) + 1); // add 1 to avoid zero costs.
-                    double test_g = expanded_node->cost_g + diff_g;
+                    // double diff_g = neighbor.value * (inflation_layer_(neighbor_idx) + 1); // add 1 to avoid zero costs.
+                    // double test_g = expanded_node->cost_g + diff_g;
+                    // to here
 
                     // queue neighbor node to open list and write data to if test_g is the cheapest so far.
                     if (test_g < neighbor_node->cost_g)
