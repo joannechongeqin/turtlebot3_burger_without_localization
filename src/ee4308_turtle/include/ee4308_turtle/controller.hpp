@@ -421,7 +421,9 @@ namespace ee4308::turtle
         * @param curvature The computed curvature of the robot's path.
         */
         double curvature_heuristic(double &curvature, double &lin_vel) {
-             double curv_thres = params_.curve_thres;
+            double curv_thres = params_.curve_thres;
+
+            // if curvature is too large, reduce velocity
             if (curvature > curv_thres) {
                 lin_vel *= curv_thres / curvature;
                 std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
@@ -435,9 +437,10 @@ namespace ee4308::turtle
         * @param ranges The LIDAR scan ranges from the sensor_msgs::msg::LaserScan::ranges.
         */
         double proximity_heuristic(const std::vector<float> &ranges, double &lin_vel) {
-            // for every ray in scan,
+            
             double threshold = params_.dist_thres;
-            for (int deg = 0; deg < 360; ++deg) {
+
+            for (int deg = 0; deg < 360; ++deg) { // for every ray in scan,
                 double range = ranges[deg];
 
                 // ignore ray if range is less than min_range
