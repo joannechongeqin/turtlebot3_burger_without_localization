@@ -313,9 +313,6 @@ namespace ee4308::turtle
                     plan_request_active = false;
                 }
 
-                for (const V2d &p : plan_)
-                    std::cout << p << " ";
-
                 // check if a new plan is required
                 bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
 
@@ -429,7 +426,7 @@ namespace ee4308::turtle
         * @param curvature The computed curvature of the robot's path.
         */
         double curvature_heuristic(double &curvature, double &lin_vel) {
-            
+
             double curv_thres = params_.curve_thres;
 
             // if curvature is too large, reduce velocity
