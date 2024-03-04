@@ -1,0 +1,3 @@
+nav_msgs/Path path
+---
+bool path_within_inflation

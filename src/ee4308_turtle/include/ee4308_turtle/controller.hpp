@@ -16,6 +16,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 
 #include "ee4308_interfaces/srv/waypoint.hpp"
+#include "ee4308_interfaces/srv/path_within_inflation.hpp"
 #include "ee4308_lib/core.hpp"
 #include "ee4308_turtle/raytracer.hpp"
 #include "ee4308_turtle/grid.hpp"
@@ -29,6 +30,7 @@ namespace ee4308::turtle
         {
             std::string get_plan = "get_plan";           // the service name to request the plan
             std::string goto_waypoint = "goto_waypoint"; // the service name to respond to a waypoint objective.
+            std::string check_path_within_inflation = "check_path_within_inflation"; // the service name to check if a path has crossed into a cell on the inflation layer that has a lethal inflation cost (i.e. is too close to an obstacle)
         } services;
         struct Topics
         {
@@ -65,6 +67,7 @@ namespace ee4308::turtle
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;           // subscriber
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pub_lookahead_;           // subscriber
         rclcpp::Client<nav_msgs::srv::GetPlan>::SharedPtr client_plan_;                 // client
+        rclcpp::Client<ee4308_interfaces::srv::PathWithinInflation>::SharedPtr client_check_path_; // client
         rclcpp::Service<ee4308_interfaces::srv::Waypoint>::SharedPtr service_waypoint_; // service
         rclcpp::CallbackGroup::SharedPtr cb_group_;                                     // to allow all callbacks to simultaneously occur in the executor. Requires node to be added to MultiThreaderExecutor
         std::vector<V2d> plan_;
@@ -105,6 +108,10 @@ namespace ee4308::turtle
             declare_parameter<std::string>("services.goto_waypoint", params_.services.goto_waypoint);
             get_parameter<std::string>("services.goto_waypoint", params_.services.goto_waypoint);
             RCLCPP_INFO_STREAM(get_logger(), "services.goto_waypoint: " << params_.services.goto_waypoint);
+
+            declare_parameter<std::string>("services.check_path_within_inflation", params_.services.check_path_within_inflation);
+            get_parameter<std::string>("services.check_path_within_inflation", params_.services.check_path_within_inflation);
+            RCLCPP_INFO_STREAM(get_logger(), "services.check_path_within_inflation: " << params_.services.check_path_within_inflation);
 
             declare_parameter<std::string>("topics.pose", params_.topics.pose);
             get_parameter<std::string>("topics.pose", params_.topics.pose);
@@ -211,6 +218,9 @@ namespace ee4308::turtle
             client_plan_ = create_client<nav_msgs::srv::GetPlan>(params_.services.get_plan,
                                                                  rmw_qos_profile_services_default, cb_group_);
 
+            client_check_path_ = create_client<ee4308_interfaces::srv::PathWithinInflation>(params_.services.check_path_within_inflation,
+                                                                 rmw_qos_profile_services_default, cb_group_);
+
             // Initialize the service
             service_waypoint_ = create_service<ee4308_interfaces::srv::Waypoint>(
                 params_.services.goto_waypoint,
@@ -313,8 +323,12 @@ namespace ee4308::turtle
                     plan_request_active = false;
                 }
 
+                bool pathWithinInflation = checkIfPathWithinInflation();
+                // std::cout << "Path within inflation?: " << pathWithinInflation << std::endl;
+
                 // check if a new plan is required
-                bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
+                // bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
+                bool need_plan = pathWithinInflation;
 
                 // start a new plan request only if there are no active requests
                 if (need_plan == true && plan_request_active == false)
@@ -494,5 +508,31 @@ namespace ee4308::turtle
             request->goal.pose.position.y = waypoint.y;
             return client_plan_->async_send_request(request);
         }
-    };
+        
+
+        /**
+         * Request planner_smoother to check if the existing path has crossed into a cell on the inflation layer 
+         * that has a lethal inflation cost (i.e. is too close to an obstacle). 
+         * If yes, returns true, else false.
+         */
+        bool checkIfPathWithinInflation() {
+            
+            auto request_ = std::make_shared<ee4308_interfaces::srv::PathWithinInflation::Request>();
+            
+            nav_msgs::msg::Path msg_;
+            msg_.header.frame_id ="map";
+            for (const V2d &coord : plan_) {
+                geometry_msgs::msg::PoseStamped pose;
+                pose.pose.position.x = coord.x;
+                pose.pose.position.y = coord.y;
+                pose.pose.orientation.w = 1;
+                msg_.poses.push_back(pose);
+            }
+            request_->path = msg_;
+
+            auto result = client_check_path_->async_send_request(request_);
+            return result.get()->path_within_inflation;
+        }
+
+     };
 }
