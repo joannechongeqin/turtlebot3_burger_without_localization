@@ -405,8 +405,11 @@ namespace ee4308::turtle
 
             // Regulated Pure Pursuit (Curvature Heuristic)
             double curv_thres = params_.curve_thres;
-            if (curvature > curv_thres)
-                 lin_vel = lin_vel * curv_thres / curvature;
+            if (curvature > curv_thres){
+                lin_vel *= curv_thres / curvature;
+                std::cout << "Curvature too large, reducing velocity to " << lin_vel << std::endl;
+            }
+
 
             // Proximity Heuristic
             lin_vel = proximity_heuristic(ranges, lin_vel);
@@ -451,6 +454,7 @@ namespace ee4308::turtle
                 double range = ranges[deg];
                 if (range <= threshold){
                     lin_vel *= range / threshold;
+                    std::cout << "Robot too close to obstacle, reducing velocity to " << lin_vel << std::endl;
                     break;
                 }
             }
