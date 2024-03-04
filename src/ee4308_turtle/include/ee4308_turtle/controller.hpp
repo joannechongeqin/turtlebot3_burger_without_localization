@@ -48,6 +48,7 @@ namespace ee4308::turtle
         double lookahead_lin_vel = 0.1; // the default value of the lookahead linear velocity
         double dist_thres = 0.1;   // threshold distance for proximity distance (m)
         double curve_thres = 0.5;  // threshold curvature for curvature heuristic (m)
+        double lidar_min_scan_range = 0.12001; // minimum scan range for turtlebot's lidar (m)
     };
 
     /**
@@ -164,6 +165,10 @@ namespace ee4308::turtle
             declare_parameter<double>("curve_thres", params_.curve_thres);
             get_parameter<double>("curve_thres", params_.curve_thres);
             RCLCPP_INFO_STREAM(get_logger(), "curve_thres: " << params_.curve_thres);
+
+            declare_parameter<double>("lidar_min_scan_range", params_.lidar_min_scan_range);
+            get_parameter<double>("lidar_min_scan_range", params_.lidar_min_scan_range);
+            RCLCPP_INFO_STREAM(get_logger(), "lidar_min_scan_range: " << params_.lidar_min_scan_range);
         }
 
         /**
@@ -308,6 +313,9 @@ namespace ee4308::turtle
                     plan_request_active = false;
                 }
 
+                for (const V2d &p : plan_)
+                    std::cout << p << " ";
+
                 // check if a new plan is required
                 bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
 
@@ -421,6 +429,7 @@ namespace ee4308::turtle
         * @param curvature The computed curvature of the robot's path.
         */
         double curvature_heuristic(double &curvature, double &lin_vel) {
+            
             double curv_thres = params_.curve_thres;
 
             // if curvature is too large, reduce velocity
@@ -437,14 +446,14 @@ namespace ee4308::turtle
         * @param ranges The LIDAR scan ranges from the sensor_msgs::msg::LaserScan::ranges.
         */
         double proximity_heuristic(const std::vector<float> &ranges, double &lin_vel) {
-            
+
             double threshold = params_.dist_thres;
 
             for (int deg = 0; deg < 360; ++deg) { // for every ray in scan,
                 double range = ranges[deg];
 
-                // ignore ray if range is less than min_range
-                if (range < params_.min_scan_range)
+                // ignore ray if range is less than lidar_min_scan_range
+                if (range < params_.lidar_min_scan_range)
                     continue;
 
                 // if ray sees an obstacle within threshold, reduce velocity

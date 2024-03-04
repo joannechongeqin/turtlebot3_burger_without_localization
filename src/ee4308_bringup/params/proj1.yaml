@@ -51,6 +51,8 @@ turtle:
       lookahead_lin_vel: 0.22 # {double} the lookahead linear velocity (m/s)
       dist_thres: 0.1  # {double} threshold distance (m)
       curve_thres: 0.1  # {double} curvature threshold (m)
+      lidar_min_scan_range: 0.12001 # {double} Do not change. Minimum scan range for turtlebot's lidar in meters.
+
   mapper:
     ros__parameters:
       topics:
