@@ -288,7 +288,7 @@ namespace ee4308::turtle
         /**
          * Implement smoother using cubic hermite splines 
          */
-        std::vector<V2d> smootherCubicHermiteSplines(const std::vector<V2d> &path) {
+        std::vector<V2d> cubic_hermite_spline_smoother(const std::vector<V2d> &path) {
             // find turning points along found path
             std::vector<V2d> turning_points = findTurningPoints(path);
 
@@ -330,7 +330,7 @@ namespace ee4308::turtle
                 
                 // interpolate
                 smooth_path.push_back(p0); // add start point to final smooth path
-                double dt = 0.1; // TODO to tune or add as parameter to params
+                double dt = 0.2; // TODO to tune or add as parameter to params
                 for (double t = dt; t < time; t += dt) { 
                     double t2 = t * t, t3 = t2 * t; // t^2, t^3
                     double x_new = a0 + a1 * t + a2 * t2 + a3 * t3;
@@ -394,7 +394,7 @@ namespace ee4308::turtle
         const std::vector<V2d> &smooth() // FIXME
         {
             // cubic hermite splines smoother
-            std::vector<V2d> cubicHermite_smooth_path = smootherCubicHermiteSplines(path_);
+            std::vector<V2d> cubicHermite_smooth_path = cubic_hermite_spline_smoother(path_);
 
             // savitsky-golay moving average smoother
             std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 5);
@@ -410,7 +410,7 @@ namespace ee4308::turtle
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 0; // TODO: to tune
+            int LETHAL_COST = 3; // TODO: to tune and add to params?
             return cost > LETHAL_COST;
         }
 
@@ -624,7 +624,7 @@ namespace ee4308::turtle
             auto path = request->path.poses;
             // request a map. If shutdown or failed, return the default plan (nothing).
             if (requestInflationLayer() == false) {
-                std::cout << "Inflation layer cannot be requested. No path returned." << std::endl;
+                std::cout << "Inflation layer cannot be requested. Check failed." << std::endl;
                 return;
             }
             std::vector<V2d> path_vector;
@@ -635,7 +635,6 @@ namespace ee4308::turtle
                     return;
                 }
             }
-            
             response->path_within_inflation = false;
         }
     };

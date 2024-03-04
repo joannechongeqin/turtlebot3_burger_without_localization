@@ -329,6 +329,8 @@ namespace ee4308::turtle
                 // check if a new plan is required
                 // bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
                 bool need_plan = pathWithinInflation;
+                if (need_plan) 
+                    std::cout << "Existing path is too close to an obstacle. Replanning path..." << std::endl;
 
                 // start a new plan request only if there are no active requests
                 if (need_plan == true && plan_request_active == false)
@@ -419,10 +421,12 @@ namespace ee4308::turtle
             }
 
             // Curvature Heuristic
-           lin_vel = curvature_heuristic(curvature, lin_vel);
+            // std::cout << "Curvature: " << curvature << std::endl;
+            lin_vel = curvature_heuristic(curvature, lin_vel);
         
             // Proximity Heuristic
             lin_vel = proximity_heuristic(ranges, lin_vel);
+
 
             // ==== end of FIXME ====
 
