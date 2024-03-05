@@ -19,6 +19,7 @@
 #include "ee4308_lib/core.hpp"
 #include "ee4308_turtle/raytracer.hpp"
 #include "ee4308_turtle/grid.hpp"
+#include "ee4308_interfaces/srv/path_within_inflation.hpp"
 
 #pragma once
 namespace ee4308::turtle
@@ -33,6 +34,7 @@ namespace ee4308::turtle
         {
             std::string get_inflation_layer = "get_inflation_layer";
             std::string get_plan = "get_plan";
+            std::string check_path_within_inflation = "check_path_within_inflation"; // the service name to check if a path has crossed into a cell on the inflation layer that has a lethal inflation cost (i.e. is too close to an obstacle)
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
@@ -481,7 +483,14 @@ namespace ee4308::turtle
             return path(); // returns path_
         }
 
-
+        bool checkPointWithinInflation(const V2d &point) {
+            V2 cell = inflation_layer_.worldToCell(point);
+            long idx = inflation_layer_.cellToIdx(cell);
+            int cost = inflation_layer_(idx);
+            // std::cout << point << " with cost " << cost << std::endl;
+            int LETHAL_COST = 0; // TODO: to tune
+            return cost > LETHAL_COST;
+        }
 
         /**
          * Updates the local copy of the cost map (inflation layer) to search the paths on.
@@ -524,6 +533,7 @@ namespace ee4308::turtle
         rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_path_;              // publisher
         rclcpp::Client<nav_msgs::srv::GetMap>::SharedPtr client_inflation_layer_; // client
         rclcpp::Service<nav_msgs::srv::GetPlan>::SharedPtr service_plan_;         // service
+        rclcpp::Service<ee4308_interfaces::srv::PathWithinInflation>::SharedPtr service_check_path_; // service
         std::shared_ptr<PlannerSmoother> planner_smoother_;                       // the planner and smoothing class tied to this node.
         rclcpp::CallbackGroup::SharedPtr cb_group_;                               // to allow all callbacks to simultaneously occur in the executor. Requires node to be added to MultiThreaderExecutor
         std::mutex mutex_;                                                        // required to prevent data races
@@ -567,6 +577,10 @@ namespace ee4308::turtle
             get_parameter<std::string>("services.get_inflation_layer", params_.services.get_inflation_layer);
             RCLCPP_INFO_STREAM(get_logger(), "services.get_inflation_layer: " << params_.services.get_inflation_layer);
 
+            declare_parameter<std::string>("services.check_path_within_inflation", params_.services.check_path_within_inflation);
+            get_parameter<std::string>("services.check_path_within_inflation", params_.services.check_path_within_inflation);
+            RCLCPP_INFO_STREAM(get_logger(), "services.check_path_within_inflation: " << params_.services.check_path_within_inflation);
+
             declare_parameter<std::string>("services.get_plan", params_.services.get_plan);
             get_parameter<std::string>("services.get_plan", params_.services.get_plan);
             RCLCPP_INFO_STREAM(get_logger(), "services.get_plan: " << params_.services.get_plan);
@@ -600,6 +614,10 @@ namespace ee4308::turtle
             service_plan_ = create_service<nav_msgs::srv::GetPlan>(
                 params_.services.get_plan,
                 std::bind(&ROSNodePlannerSmoother::servicePlan, this, std::placeholders::_1, std::placeholders::_2),
+                rmw_qos_profile_services_default, cb_group_);
+            service_check_path_ = create_service<ee4308_interfaces::srv::PathWithinInflation>(
+                params_.services.check_path_within_inflation,
+                std::bind(&ROSNodePlannerSmoother::serviceCheckPath, this, std::placeholders::_1, std::placeholders::_2),
                 rmw_qos_profile_services_default, cb_group_);
 
             // wait for service to respond
@@ -676,6 +694,27 @@ namespace ee4308::turtle
 
             // respond with the path
             response->plan = msg;
+        }
+
+        void serviceCheckPath(const std::shared_ptr<ee4308_interfaces::srv::PathWithinInflation::Request> request,
+                                 std::shared_ptr<ee4308_interfaces::srv::PathWithinInflation::Response> response) {
+            
+            auto path = request->path.poses;
+            // request a map. If shutdown or failed, return the default plan (nothing).
+            if (requestInflationLayer() == false) {
+                std::cout << "Inflation layer cannot be requested. No path returned." << std::endl;
+                return;
+            }
+            std::vector<V2d> path_vector;
+            for(std::vector<geometry_msgs::msg::PoseStamped>::const_iterator it = path.begin(); it != path.end(); ++it) {
+                V2d point = V2d(it->pose.position.x, it->pose.position.y);
+                if (planner_smoother_->checkPointWithinInflation(point)) {
+                    response->path_within_inflation = true;
+                    return;
+                }
+            }
+            
+            response->path_within_inflation = false;
         }
     };
 }
