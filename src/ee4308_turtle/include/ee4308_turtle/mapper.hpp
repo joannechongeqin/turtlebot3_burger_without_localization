@@ -186,7 +186,10 @@ namespace ee4308::turtle
 
                 inflation_filter_(idx_) += (inflate ? 1 : -1); // count the number of obstacle cells inflating the current cell
 
+                // TODO: Modify this cost value to use the lethal cost function
                 double cost = inflation_filter_(idx_) * mask.value; // costs should always be 0 to LETHAL_COST (<=127)
+
+                // TODO: This parameter needs to be modified and tuned
                 if (cost > params_.inf_limit)
                     cost = params_.inf_limit;
 
@@ -264,7 +267,8 @@ namespace ee4308::turtle
                 ray_coord = obstacle_layer_.worldToVertex(ray_coord);
 
                 // initialize ray tracer
-                V2 ray_vertex = ray_tracer_.init(rbt_coord, ray_coord);
+                auto p_init = ray_tracer_.init(rbt_coord, ray_coord); //edited due to pair values
+                V2 ray_vertex = p_init.first;
 
                 // trace the lidar ray
                 while (1)
@@ -276,7 +280,8 @@ namespace ee4308::turtle
 
                     long ray_idx = obstacle_layer_.cellToIdx(ray_cell);
 
-                    V2 next_ray_vertex = ray_tracer_.next(); // check if next root is at/after the end of ray
+                    auto p_next = ray_tracer_.next(); //added to account for change in the raytracer definition
+                    V2 next_ray_vertex =  p_next.first; // check if next root is at/after the end of ray
                     if (ray_tracer_.reached() == true)
                     {
                         if (sees_nothing == false) // update the last cell as occupied if ray is not longer than max range
