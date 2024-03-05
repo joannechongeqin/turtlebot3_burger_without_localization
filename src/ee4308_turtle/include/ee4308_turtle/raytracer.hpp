@@ -87,25 +87,25 @@ namespace ee4308::turtle
 
             if (len_.x - len_.y < -THRES)
             {
-                recorded_len = len(0);
+                recorded_len = len_(0);
                 getNext(0); // x crossed a grid line before y crossed a grid line
             }                
             else if (len_.x - len_.y > THRES)
             {
-                recorded_len = len(1);
+                recorded_len = len_(1);
                 getNext(1); // y crossed a grid line before x crossed a grid line
             }
             else
             { // x and y crossed grid line at same location
                 if (len_.x < REACHED_THRES)
                 {
-                    recorded_len = len(0);
+                    recorded_len = len_(0);
                     getNext(0);
                 }
 
                 if (len_.y < REACHED_THRES)
                 {
-                    recorded_len = len(1);
+                    recorded_len = len_(1);
                     getNext(1);
                 }
             }
