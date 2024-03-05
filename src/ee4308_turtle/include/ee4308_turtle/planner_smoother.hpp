@@ -38,6 +38,7 @@ namespace ee4308::turtle
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
+        int8_t lethal_cost = 12;
     };
 
     struct PlannerNode
@@ -195,7 +196,7 @@ namespace ee4308::turtle
             // Convert world coordinates to cell coordinates
             V2 start_cell = inflation_layer_.worldToCell(start_coord);
             V2 goal_cell = inflation_layer_.worldToCell(goal_coord);
-
+            
             // Initialize nodes with the same size as the inflation layer
             std::vector<PlannerNode> nodes(inflation_layer_.size().x * inflation_layer_.size().y);
 
@@ -593,8 +594,8 @@ namespace ee4308::turtle
             get_parameter<double>("spline_vel", params_.spline_vel);
             RCLCPP_INFO_STREAM(get_logger(), "spline_vel: " << params_.spline_vel);
 
-            declare_parameter<double>("lethal_cost", params_.lethal_cost);
-            get_parameter<double>("lethal_cost", params_.lethal_cost);
+            declare_parameter<int8_t>("lethal_cost", params_.lethal_cost);
+            get_parameter<int8_t>("lethal_cost", params_.lethal_cost);
             RCLCPP_INFO_STREAM(get_logger(), "lethal_cost: " << params_.lethal_cost);
         }
 
