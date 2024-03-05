@@ -409,9 +409,9 @@ namespace ee4308::turtle
             V2 cell = inflation_layer_.worldToCell(point);
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
-            // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 3; // TODO: to tune and add to params?
-            return cost > LETHAL_COST;
+            std::cout << point << " with cost " << cost << std::endl;
+            int LETHAL_COST = 15; // TODO: to tune and add to params?
+            return cost >= LETHAL_COST;
         }
 
         /**

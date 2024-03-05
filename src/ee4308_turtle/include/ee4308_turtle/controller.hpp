@@ -444,7 +444,7 @@ namespace ee4308::turtle
         * @param curvature The computed curvature of the robot's path.
         */
         double curvature_heuristic(double &curvature, double &lin_vel) {
-
+            
             double curv_thres = params_.curve_thres;
 
             // if curvature is too large, reduce velocity
