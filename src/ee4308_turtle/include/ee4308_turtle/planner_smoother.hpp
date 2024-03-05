@@ -184,7 +184,9 @@ namespace ee4308::turtle
 
         const std::vector<V2d> &run(const V2d &start_coord, const V2d &goal_coord)
         { // changed to A*
-            int8_t const lethal_cost = 127;
+
+            std::cout << "start" << std::endl;;
+            // int8_t const lethal_cost = 127; //constant for lethal cost
             // clear path
             path_.clear();
 
@@ -247,30 +249,33 @@ namespace ee4308::turtle
                         continue;
                     
                     // Start of edits for theta *
+                    std::cout << "start of theta" << std::endl;
                     // Initialise first root vertex found by los
                     auto p_init = ray_tracer_.init(parent_node->cell + 0.5, neighbor_cell + 0.5);
                     V2 root_vertex =  p_init.first;
 
+                    std::cout << "1" << std::endl;
                     // Variables needed for theta*
                     double los_current_len ,los_moved_len, test_g;
                     double los_prev_len = p_init.second;
-
+                    
+                    std::cout << "2" << std::endl;;
                     // loops until ray tracer detects that it is reached
-                    while (!(ray_tracer_.reached()))
+                    while (!ray_tracer_.reached())
                     {
                         // Initialise cell_coord of current root_vertex
                         V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, ray_tracer_.sgnDir());
-
+                        std::cout << "3" << std::endl;;
                         // Initilise test g cost as 0
                         test_g = 0;
 
                         // Check if cell cost is greater than lethal cost
                         long cell_index = inflation_layer_.cellToIdx(cell_coord);
-                        PlannerNode *const cell_node = &nodes[cell_index];
 
                         int8_t cell_cost = inflation_layer_(cell_index);
 
-                        if (cell_cost > lethal_cost){
+                        std::cout << "4" << std::endl;;
+                        if (cell_cost > 127){
                             test_g = calc_euclidean_dist(expanded_node->cell, neighbor_node->cell) * inflation_layer_(expanded_idx);
                             parent_node = expanded_node;
                             break;
@@ -278,17 +283,21 @@ namespace ee4308::turtle
                         else if (cell_cost == 0){// check if cell cost is equal to 0
                             cell_cost = 1;
                         }
+
+                        std::cout << "5" << std::endl;;
                         // this function should return the length needed to update g_cost and the next vertex coordinate
                         auto p = ray_tracer_.next();
                         root_vertex = p.first;
                         los_current_len = p.second;
 
+                        std::cout << "6" << std::endl;;
                         // update the test_g_cost
                         los_moved_len = los_current_len - los_prev_len;
                         los_prev_len = los_current_len;
-                        test_g = test_g + los_moved_len * cell_node->cost_f;
+                        test_g = test_g + los_moved_len * cell_cost;
+                        std::cout << "Looping" << std::endl;;
                     }
-
+                    
                     // theta * will replace from here
                     // find the cost to reach the neighbor from the current node, with extra costs from the inflation layer.
                     // double diff_g = neighbor.value * (inflation_layer_(neighbor_idx) + 1); // add 1 to avoid zero costs.
