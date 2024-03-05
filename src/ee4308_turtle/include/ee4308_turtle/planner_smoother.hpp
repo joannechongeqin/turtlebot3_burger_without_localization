@@ -188,7 +188,7 @@ namespace ee4308::turtle
         { // changed to A*
 
             std::cout << "start" << std::endl;;
-            // int8_t const lethal_cost = 127; //constant for lethal cost
+            int8_t const LETHAL_COST = params_.lethal_cost; //constant for lethal cost
             // clear path
             path_.clear();
 
@@ -276,7 +276,7 @@ namespace ee4308::turtle
                         int8_t cell_cost = inflation_layer_(cell_index);
 
                         std::cout << "4" << std::endl;;
-                        if (cell_cost > 127){
+                        if (cell_cost > LETHAL_COST){
                             test_g = calc_euclidean_dist(expanded_node->cell, neighbor_node->cell) * inflation_layer_(expanded_idx);
                             parent_node = expanded_node;
                             break;
@@ -488,7 +488,7 @@ namespace ee4308::turtle
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 0; // TODO: to tune
+            int LETHAL_COST = params_.lethal_cost; // TODO: to tune
             return cost > LETHAL_COST;
         }
 
@@ -592,6 +592,10 @@ namespace ee4308::turtle
             declare_parameter<double>("spline_vel", params_.spline_vel);
             get_parameter<double>("spline_vel", params_.spline_vel);
             RCLCPP_INFO_STREAM(get_logger(), "spline_vel: " << params_.spline_vel);
+
+            declare_parameter<double>("lethal_cost", params_.lethal_cost);
+            get_parameter<double>("lethal_cost", params_.lethal_cost);
+            RCLCPP_INFO_STREAM(get_logger(), "lethal_cost: " << params_.lethal_cost);
         }
 
         /**

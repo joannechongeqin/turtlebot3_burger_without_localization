@@ -29,6 +29,7 @@ turtle:
         get_plan: "get_plan" # {string} service name to service a plan request.
       frame_id: "map" # The parent tf2 frame of the path.
       spline_vel: 0.2 # {double} The boundary velocity for the cubic or quintic spline.
+      lethal_cost: 12 # The lethal cost for theta* implementation
 
   controller:
     ros__parameters:
