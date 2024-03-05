@@ -181,13 +181,10 @@ namespace ee4308::turtle
             return diff;
         }
 
-        double lethal_cost()
-        {
-            return 0.0;
-        }       
 
         const std::vector<V2d> &run(const V2d &start_coord, const V2d &goal_coord)
         { // changed to A*
+            int8_t const lethal_cost = 127;
             // clear path
             path_.clear();
 
@@ -238,8 +235,9 @@ namespace ee4308::turtle
                     if (inflation_layer_.outOfMap(neighbor_cell))
                         continue;
 
-                    // get neighbor's index
+                    // get neighbor's & expanded_node's index
                     long neighbor_idx = inflation_layer_.cellToIdx(neighbor_cell);
+                    long expanded_idx = inflation_layer_.cellToIdx(expanded_node->cell);
 
                     // get neighbor node.
                     PlannerNode *const neighbor_node = &nodes[neighbor_idx];
@@ -261,7 +259,7 @@ namespace ee4308::turtle
                     while (!(ray_tracer_.reached()))
                     {
                         // Initialise cell_coord of current root_vertex
-                        V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, this->getSgnDir());
+                        V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, ray_tracer_.sgnDir());
 
                         // Initilise test g cost as 0
                         test_g = 0;
@@ -269,13 +267,16 @@ namespace ee4308::turtle
                         // Check if cell cost is greater than lethal cost
                         long cell_index = inflation_layer_.cellToIdx(cell_coord);
                         PlannerNode *const cell_node = &nodes[cell_index];
-                        if (cell_node->cost_f > lethal_cost()){
-                            test_g = calc_euclidean_dist(expanded_node->cell, neighbor_node->cell) * expanded_node->cost_f;
+
+                        int8_t cell_cost = inflation_layer_(cell_index);
+
+                        if (cell_cost > lethal_cost){
+                            test_g = calc_euclidean_dist(expanded_node->cell, neighbor_node->cell) * inflation_layer_(expanded_idx);
                             parent_node = expanded_node;
                             break;
                         }
-                        else if (cell_node->cost_f == 0){// check if cell cost is equal to 0
-                            cell_node->cost_f = 1;
+                        else if (cell_cost == 0){// check if cell cost is equal to 0
+                            cell_cost = 1;
                         }
                         // this function should return the length needed to update g_cost and the next vertex coordinate
                         auto p = ray_tracer_.next();
@@ -300,8 +301,8 @@ namespace ee4308::turtle
                         neighbor_node->cell = neighbor_cell; // cell coordinate was not initialized
                         neighbor_node->cost_g = test_g;
                         // h_cost = distance between neighbor_node and goal point // using manhattan distance in this case
-                        neighbor_node->cost_h = abs(goal_cell.x - neighbor_cell.x) + abs(goal_cell.y - neighbor_cell.y); // FIXME 
-                        neighbor_node->cost_f = calc_h_cost(neighbor_cell, goal_cell); // FIXME // f_cost ← h_cost + (neighbor_node's g cost)
+                        neighbor_node->cost_h = calc_h_cost(neighbor_cell, goal_cell); // FIXME 
+                        neighbor_node->cost_f = neighbor_node->cost_h + neighbor_node-> cost_g; // FIXME // f_cost ← h_cost + (neighbor_node's g cost)
                         neighbor_node->parent = expanded_node;
 
                         open_list_.queue(neighbor_node);
