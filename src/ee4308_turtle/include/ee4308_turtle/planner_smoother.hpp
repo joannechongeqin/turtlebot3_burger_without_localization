@@ -204,9 +204,10 @@ namespace ee4308::turtle
                 long idx = inflation_layer_.cellToIdx(start_cell);
                 PlannerNode *node = &nodes[idx];
                 node->cost_g = 0;
-                node->cost_h = calc_h_cost(start_cell, goal_cell); // FIX ME
+                // node->cost_h = calc_h_cost(start_cell, goal_cell); // FIX ME
                 node->cost_f = 0;
                 node->cell = start_cell;
+                node->parent = node;
                 open_list_.queue(node);
             }
 
@@ -254,7 +255,7 @@ namespace ee4308::turtle
                     // Start of edits for theta *
                     std::cout << "start of theta" << std::endl;
                     // Initialise first root vertex found by los
-                    V2 root_vertex = ray_tracer_.init(expanded_node->cell + 0.5, neighbor_cell + 0.5);
+                    V2 root_vertex = ray_tracer_.init(parent_node->cell + 0.5, neighbor_cell + 0.5);
                     std::cout << "1" << std::endl;
 
                     // Variables needed for theta*
@@ -262,14 +263,16 @@ namespace ee4308::turtle
                     double los_prev_len = ray_tracer_.getLength();
                     
                     std::cout << "2" << std::endl;;
+
+                    // Initilise test g cost as 0
+                    test_g = 0;
+
                     // loops until ray tracer detects that it is reached
                     while (!ray_tracer_.reached())
                     {
                         // Initialise cell_coord of current root_vertex
                         V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, ray_tracer_.sgnDir());
                         std::cout << "3" << std::endl;;
-                        // Initilise test g cost as 0
-                        test_g = 0;
 
                         // Check if cell cost is greater than lethal cost
                         long cell_index = inflation_layer_.cellToIdx(cell_coord);
@@ -293,7 +296,7 @@ namespace ee4308::turtle
 
                         std::cout << "6" << std::endl;;
                         // update the test_g_cost
-                        los_moved_len = los_current_len - los_prev_len;
+                        los_moved_len = abs(los_current_len - los_prev_len);
                         los_prev_len = los_current_len;
                         test_g = test_g + los_moved_len * cell_cost;
                         std::cout << "Looping" << std::endl;;
@@ -313,7 +316,7 @@ namespace ee4308::turtle
                         // h_cost = distance between neighbor_node and goal point // using manhattan distance in this case
                         neighbor_node->cost_h = calc_h_cost(neighbor_cell, goal_cell); // FIXME 
                         neighbor_node->cost_f = neighbor_node->cost_h + neighbor_node-> cost_g; // FIXME // f_cost ← h_cost + (neighbor_node's g cost)
-                        neighbor_node->parent = expanded_node;
+                        neighbor_node->parent = parent_node;
 
                         open_list_.queue(neighbor_node);
                     }
