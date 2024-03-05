@@ -16,6 +16,7 @@ namespace ee4308::turtle
     private:
         V2d dif_, len_, from_, to_, grad_;
         V2 root_, sgn_;
+        double recorded_len;
         const double REACHED_THRES = 1 - THRES;
         char reached_ = 0;
 
@@ -35,7 +36,7 @@ namespace ee4308::turtle
          * @param vertex_from The grid coordinates where the ray begins.
          * @param vertex_to The grid coordinates where the ray ends.
          */
-        std::pair<V2, double> init(const V2d &vertex_from, const V2d &vertex_to)
+        const V2 &init(const V2d &vertex_from, const V2d &vertex_to)
         {
             from_ = vertex_from;
             to_ = vertex_to;
@@ -75,9 +76,8 @@ namespace ee4308::turtle
          * Goes to the next root vertex and returns it.
          * Use adjCellOfVertex to get front cell.
          */
-        std::pair<V2, double> next()
+        const V2 &next()
         {
-            double recorded_len;
             auto getNext = [this](const int &d)
             {
                 root_(d) += sgn_(d);
@@ -109,8 +109,8 @@ namespace ee4308::turtle
                     getNext(1);
                 }
             }
-
-            return std::make_pair(root_, recorded_len);
+            std::cout << root_ << std::endl;
+            return root_;
         }
 
         /**
@@ -127,5 +127,8 @@ namespace ee4308::turtle
          * Returns true when the ray has reached the end.
          */
         bool reached() const { return reached_ >= 2; }
+
+        // Returns recorded length
+        double getLength() const { return recorded_len; }
     };
 }

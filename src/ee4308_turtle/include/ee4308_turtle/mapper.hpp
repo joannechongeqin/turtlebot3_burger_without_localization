@@ -267,8 +267,7 @@ namespace ee4308::turtle
                 ray_coord = obstacle_layer_.worldToVertex(ray_coord);
 
                 // initialize ray tracer
-                auto p_init = ray_tracer_.init(rbt_coord, ray_coord); //edited due to pair values
-                V2 ray_vertex = p_init.first;
+                V2 ray_vertex = ray_tracer_.init(rbt_coord, ray_coord);
 
                 // trace the lidar ray
                 while (1)
@@ -280,8 +279,7 @@ namespace ee4308::turtle
 
                     long ray_idx = obstacle_layer_.cellToIdx(ray_cell);
 
-                    auto p_next = ray_tracer_.next(); //added to account for change in the raytracer definition
-                    V2 next_ray_vertex =  p_next.first; // check if next root is at/after the end of ray
+                    V2 next_ray_vertex =  ray_tracer_.next(); // check if next root is at/after the end of ray
                     if (ray_tracer_.reached() == true)
                     {
                         if (sees_nothing == false) // update the last cell as occupied if ray is not longer than max range

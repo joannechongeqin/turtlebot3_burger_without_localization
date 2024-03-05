@@ -251,13 +251,12 @@ namespace ee4308::turtle
                     // Start of edits for theta *
                     std::cout << "start of theta" << std::endl;
                     // Initialise first root vertex found by los
-                    auto p_init = ray_tracer_.init(parent_node->cell + 0.5, neighbor_cell + 0.5);
-                    V2 root_vertex =  p_init.first;
-
+                    V2 root_vertex = ray_tracer_.init(expanded_node->cell + 0.5, neighbor_cell + 0.5);
                     std::cout << "1" << std::endl;
+
                     // Variables needed for theta*
                     double los_current_len ,los_moved_len, test_g;
-                    double los_prev_len = p_init.second;
+                    double los_prev_len = ray_tracer_.getLength();
                     
                     std::cout << "2" << std::endl;;
                     // loops until ray tracer detects that it is reached
@@ -286,9 +285,8 @@ namespace ee4308::turtle
 
                         std::cout << "5" << std::endl;;
                         // this function should return the length needed to update g_cost and the next vertex coordinate
-                        auto p = ray_tracer_.next();
-                        root_vertex = p.first;
-                        los_current_len = p.second;
+                        root_vertex = ray_tracer_.next();
+                        los_current_len = ray_tracer_.getLength();
 
                         std::cout << "6" << std::endl;;
                         // update the test_g_cost
