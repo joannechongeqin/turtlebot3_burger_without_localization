@@ -137,21 +137,21 @@ namespace ee4308::turtle
         void foundPath(PlannerNode *expanded_node, const V2d &goal_coord)
         {
             PlannerNode *node = expanded_node;
-            // std::cout << "Path Found: { ";
+            std::cout << "Path Found: { ";
 
             // fill the goal coord (based on the original coordinates)
             path_.push_back(goal_coord);
-            // std::cout << path_.back() << "; ";
+            std::cout << path_.back() << "; ";
 
             // fill the coords, if any
             do
             {
                 path_.push_back(inflation_layer_.cellToWorld(node->cell, true));
-                // std::cout << path_.back() << "; ";
+                std::cout << path_.back() << "; ";
                 node = node->parent;
             } while (node != nullptr);
 
-            // std::cout << "}" << std::endl;
+            std::cout << "}" << std::endl;
         }
 
     public:
@@ -401,6 +401,12 @@ namespace ee4308::turtle
 
             // replace the path_ with the smooth_path
             path_ = cubicHermite_smooth_path;
+            
+            std::cout << "smoothed path: {"; 
+            for (size_t i = 0; i < path_.size(); ++i) {
+                  std::cout << path_[i] << "; ";
+            }
+            std::cout << "}" << std::endl;
 
             return path(); // returns path_
         }
@@ -409,8 +415,8 @@ namespace ee4308::turtle
             V2 cell = inflation_layer_.worldToCell(point);
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
-            std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 15; // TODO: to tune and add to params?
+            // std::cout << point << " with cost " << cost << std::endl;
+            int LETHAL_COST = 5; // TODO: to tune and add to params?
             return cost >= LETHAL_COST;
         }
 
@@ -598,6 +604,8 @@ namespace ee4308::turtle
             // retrieve the request's start and goal coordinates
             V2d start_coord = {request->start.pose.position.x, request->start.pose.position.y};
             V2d goal_coord = {request->goal.pose.position.x, request->goal.pose.position.y};
+
+            std::cout << "======================================" std::endl;
 
             // find the shortest path and store the path within the class.
             std::cout << "Running Planner..." << std::endl;
