@@ -199,6 +199,7 @@ namespace ee4308::turtle
                 if (expanded_node->cell == goal_cell)
                 { // goal found. return path
                     foundPath(expanded_node, goal_coord);
+                    AStarPostProcessing(path_);
                     break; // break to clear open_list
                 }
 
@@ -247,6 +248,45 @@ namespace ee4308::turtle
             return path();
         }
 
+        void AStarPostProcessing(std::vector<V2d> path) { // check for los between existing points in path
+            std::vector<V2d> post_processed_path;
+            // std::cout << "======================================";  
+            std::cout << "post processing path from " << path[0] << " to " << path.back() << std::endl;
+            post_processed_path.push_back(path[0]); // add start point to post processed path
+            int from_point_idx = 0;
+            for (size_t i = 1; i < path.size() - 1; i++) {
+                V2 from_cell = inflation_layer_.worldToCell(path[from_point_idx]);
+                V2 to_cell = inflation_layer_.worldToCell(path[i+1]);
+                RayTracer los(from_cell, to_cell); // check if there exists a los between the from point and the next point
+                // std::cout << "checking los between " << from_cell << " and " << to_cell << std::endl;
+                while (!los.reached()) {
+                    V2 next_point = los.next();
+                    // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
+                    int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
+                    int LETHAL_COST = 0;
+                    if (cost > LETHAL_COST) { // if next point is wthin inflation layer, no los
+                        // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
+                        from_point_idx++;
+                        post_processed_path.push_back(path[i]);
+                        // std::cout << "adding " << path[i] << " to post processed path" << std::endl;
+                        break;
+                    }
+                }
+            }
+            if (post_processed_path.back() != path.back()) {
+                post_processed_path.push_back(path.back()); // add last point to post processed path
+            }
+            std::cout << "post processed path: {";
+            for (size_t i = 0; i < post_processed_path.size(); ++i) {
+                std::cout << post_processed_path[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+
+            path_ = post_processed_path;
+            
+        }
+
+
         /**
          * Find turning points on a path // helper function for cubic hermite splines smoother
          */
@@ -265,7 +305,7 @@ namespace ee4308::turtle
                 V2d x_next = path[i + 1]; // x_(i+1)
                 V2d v_curr = coord - x_prev; // v_i
                 V2d v_next = x_next - coord; // v_(i+1)
-                double v_cross_product = v_curr.x * v_next.y - v_curr.y * v_next.x; // v_i x v_(i-1) // can use v_curr.cross(v_next) also
+                double v_cross_product = v_curr.cross(v_next); // v_i x v_(i-1)
                 if (abs(v_cross_product) > 1e-5) {  // if cross product !=0, the three points are not parallel, turning point found at x_i
                     turning_points.push_back(coord);
                 }
@@ -291,6 +331,15 @@ namespace ee4308::turtle
         std::vector<V2d> cubic_hermite_spline_smoother(const std::vector<V2d> &path) {
             // find turning points along found path
             std::vector<V2d> turning_points = findTurningPoints(path);
+            std::cout << "turning point: {";
+            for (size_t i = 0; i < turning_points.size(); ++i) {
+                std::cout << turning_points[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+            
+            if (turning_points.size() < 3) {
+                return path;
+            }
 
             // for each segment on the new path, generate the cubic spline
             std::vector<V2d> smooth_path;
@@ -393,6 +442,7 @@ namespace ee4308::turtle
          */
         const std::vector<V2d> &smooth() // FIXME
         {
+            std::cout << "Running smoother..." << std::endl;
             // cubic hermite splines smoother
             std::vector<V2d> cubicHermite_smooth_path = cubic_hermite_spline_smoother(path_);
 
@@ -400,13 +450,14 @@ namespace ee4308::turtle
             std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 3);
 
             // replace the path_ with the smooth_path
-            // path_ = cubicHermite_smooth_path;
+            path_ = cubicHermite_smooth_path;
             
-            // std::cout << "smoothed path: {"; 
-            // for (size_t i = 0; i < path_.size(); ++i) {
-            //       std::cout << path_[i] << "; ";
-            // }
-            // std::cout << "}" << std::endl;
+            std::cout << "smoothed path: {"; 
+            for (size_t i = 0; i < path_.size(); ++i) {
+                  std::cout << path_[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+            std::cout << "smoother run complete." << std::endl;
 
             return path(); // returns path_
         }
@@ -416,7 +467,7 @@ namespace ee4308::turtle
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 5; // TODO: to tune and add to params?
+            int LETHAL_COST = 3; // TODO: to tune and add to params?
             return cost >= LETHAL_COST;
         }
 
@@ -605,7 +656,7 @@ namespace ee4308::turtle
             V2d start_coord = {request->start.pose.position.x, request->start.pose.position.y};
             V2d goal_coord = {request->goal.pose.position.x, request->goal.pose.position.y};
 
-            std::cout << "======================================" << std::endl;
+            // std::cout << "======================================" << std::endl;
 
             // find the shortest path and store the path within the class.
             std::cout << "Running Planner..." << std::endl;

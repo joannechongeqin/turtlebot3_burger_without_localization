@@ -12,7 +12,7 @@ turtle:
         imu: "imu" # {string} the topic to subscribe to the tbot's imu
         wheels: "joint_states" # {string} the topic to subscribe to the tbot's wheel encoders.
         pose: "pose" # {string} the topic to publish the estimated pose.
-      imu_lin_gain: 0.015 # {double} the amount of imu linear gain, between 0 and 1.
+      imu_lin_gain: 0.01 # {double} the amount of imu linear gain, between 0 and 1.
       imu_ang_gain: 0.01 # {double} the amount of imu angular gain, between 0 and 1.
       frequency: 40. # {double} how often the robot's motion is estimated (Hz).
       wheel_radius: 0.033 # {double} the wheel radius (m).
@@ -42,7 +42,7 @@ turtle:
         lookahead: "lookahead" # {string} the topic to publish the lookahead point.
       nearby: 0.1 # {double} the threshold in meters to determine if a waypoint is close enough.
       lookahead: 0.1 # {double} the maximum lookahead distance
-      max_lin_vel: 0.05 # {double} the maximum linear velocity (m/s)
+      max_lin_vel: 0.04 # {double} the maximum linear velocity (m/s)
       max_lin_acc: 1. # {double} the maxmum linear acceleration (m/s/s)
       max_ang_vel: 0.4 # {double} the maximum angular velocity (rad/s)
       max_ang_acc: 3. # {double} the maxmum angular acceleration (rad/s/s)
