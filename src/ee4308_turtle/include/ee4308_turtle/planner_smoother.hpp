@@ -605,7 +605,7 @@ namespace ee4308::turtle
             V2d start_coord = {request->start.pose.position.x, request->start.pose.position.y};
             V2d goal_coord = {request->goal.pose.position.x, request->goal.pose.position.y};
 
-            std::cout << "======================================" std::endl;
+            std::cout << "======================================" << std::endl;
 
             // find the shortest path and store the path within the class.
             std::cout << "Running Planner..." << std::endl;
