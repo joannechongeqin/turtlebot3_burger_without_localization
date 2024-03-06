@@ -422,10 +422,10 @@ namespace ee4308::turtle
 
             // Curvature Heuristic
             // std::cout << "Curvature: " << curvature << std::endl;
-            lin_vel = curvature_heuristic(curvature, lin_vel);
+            // lin_vel = curvature_heuristic(curvature, lin_vel);
         
             // Proximity Heuristic
-            lin_vel = proximity_heuristic(ranges, lin_vel);
+            // lin_vel = proximity_heuristic(ranges, lin_vel);
 
 
             // ==== end of FIXME ====
@@ -449,7 +449,7 @@ namespace ee4308::turtle
 
             // if curvature is too large, reduce velocity
             if (abs(curvature) > curv_thres) {
-                lin_vel *= curv_thres / curvature;
+                lin_vel *= curv_thres / abs(curvature);
                 std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
             }
             return lin_vel;
