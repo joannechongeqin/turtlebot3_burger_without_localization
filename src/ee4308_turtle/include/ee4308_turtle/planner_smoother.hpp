@@ -38,7 +38,8 @@ namespace ee4308::turtle
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
-        int8_t lethal_cost = 0;
+        int8_t lethal_cost = 3;
+        double dt = 0.2;
     };
 
     struct PlannerNode
@@ -200,7 +201,7 @@ namespace ee4308::turtle
                 if (expanded_node->cell == goal_cell)
                 { // goal found. return path
                     foundPath(expanded_node, goal_coord);
-                    AStarPostProcessing(path_);
+                    AStarPostProcessing();
                     break; // break to clear open_list
                 }
 
@@ -249,9 +250,8 @@ namespace ee4308::turtle
             return path();
         }
 
-        void AStarPostProcessing(std::vector<V2d> path) { // check for los between existing points in path
+        void AStarPostProcessing() { // check for los between existing points in path
             std::vector<V2d> post_processed_path;
-            // std::cout << "======================================";  
             std::cout << "post processing path from " << path[0] << " to " << path.back() << std::endl;
             post_processed_path.push_back(path[0]); // add start point to post processed path
             int from_point_idx = 0;
@@ -264,8 +264,7 @@ namespace ee4308::turtle
                     V2 next_point = los.next();
                     // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
                     int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
-                    int LETHAL_COST = params_.lethal_cost;
-                    if (cost > LETHAL_COST) { // if next point is wthin inflation layer, no los
+                    if (cost > 0) { // if next point is not empty cell, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
                         from_point_idx++;
                         post_processed_path.push_back(path[i]);
@@ -380,7 +379,7 @@ namespace ee4308::turtle
                 
                 // interpolate
                 smooth_path.push_back(p0); // add start point to final smooth path
-                double dt = 0.2; // TODO to tune or add as parameter to params
+                double dt = params_.dt;
                 for (double t = dt; t < time; t += dt) { 
                     double t2 = t * t, t3 = t2 * t; // t^2, t^3
                     double x_new = a0 + a1 * t + a2 * t2 + a3 * t3;
@@ -463,13 +462,13 @@ namespace ee4308::turtle
             return path(); // returns path_
         }
 
-        bool checkPointOk(const V2d &point) {
+        bool checkWorldPointOk(const V2d &point) {
             V2 cell = inflation_layer_.worldToCell(point);
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
             int LETHAL_COST = params_.lethal_cost; 
-            return cost < LETHAL_COST;
+            return cost <= 5;
         }
 
         /**
@@ -576,6 +575,10 @@ namespace ee4308::turtle
             declare_parameter<int8_t>("lethal_cost", params_.lethal_cost);
             get_parameter<int8_t>("lethal_cost", params_.lethal_cost);
             RCLCPP_INFO_STREAM(get_logger(), "lethal_cost: " << params_.lethal_cost);
+
+            declare_parameter<double>("dt", params_.dt);
+            get_parameter<double>("dt", params_.dt);
+            RCLCPP_INFO_STREAM(get_logger(), "dt: " << params_.dt);
         }
 
         /**
@@ -694,7 +697,7 @@ namespace ee4308::turtle
             std::vector<V2d> path_vector;
             for(std::vector<geometry_msgs::msg::PoseStamped>::const_iterator it = path.begin(); it != path.end(); ++it) {
                 V2d point = V2d(it->pose.position.x, it->pose.position.y);
-                if (!planner_smoother_->checkPointOk(point)) {
+                if (!planner_smoother_->checkWorldPointOk(point)) {
                     response->pathok = false;
                     return;
                 }
