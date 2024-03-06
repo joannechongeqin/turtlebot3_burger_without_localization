@@ -38,7 +38,7 @@ namespace ee4308::turtle
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
-        int8_t lethal_cost = 12;
+        int8_t lethal_cost = 10;
     };
 
     struct PlannerNode
@@ -150,7 +150,7 @@ namespace ee4308::turtle
                 path_.push_back(inflation_layer_.cellToWorld(node->cell, true));
                 // std::cout << path_.back() << "; ";
                 node = node->parent;
-            } while (node != nullptr);
+            } while (node != nullptr && node->parent != node);
 
             // std::cout << "}" << std::endl;
         }
@@ -255,7 +255,7 @@ namespace ee4308::turtle
                     // Start of edits for theta *
                     std::cout << "start of theta" << std::endl;
                     // Initialise first root vertex found by los
-                    V2 root_vertex = ray_tracer_.init(parent_node->cell + 0.5, neighbor_cell + 0.5);
+                    // V2 root_vertex = ray_tracer_.init(parent_node->cell + 0.5, neighbor_cell + 0.5);
                     std::cout << "1" << std::endl;
 
                     // Variables needed for theta*
@@ -266,17 +266,21 @@ namespace ee4308::turtle
 
                     // Initilise test g cost as 0
                     test_g = 0;
-
                     // loops until ray tracer detects that it is reached
-                    while (!ray_tracer_.reached())
-                    {
+                    // v2 front_cell = adjCellOfVertex(root_vertex, ray_tracer_.sgnDir());
+                    V2 front_cell = inflation_layer_.getFrontCellFromRootVertex(ray_tracer_);
+                    for (V2 root_vertex = ray_tracer_.init(front_cell + 0.5, neighbor_cell + 0.5); !ray_tracer_.reached(); root_vertex = ray_tracer_.next()) {
+                    //     while (!ray_tracer_.reached())
+                    // {
                         // Initialise cell_coord of current root_vertex
-                        V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, ray_tracer_.sgnDir());
+                        // V2 cell_coord = AbstractGrid::adjCellOfVertex(root_vertex, ray_tracer_.sgnDir());
+                        // V2 front_cell = inflation_layer_.getFrontCellFromRootVertex(ray_tracer_);
+                        // V2 cell_coord = inflation_layer_.adjCellOfVertex(front_cell, ray_tracer_.sgnDir());
+
                         std::cout << "3" << std::endl;;
-
+                        
                         // Check if cell cost is greater than lethal cost
-                        long cell_index = inflation_layer_.cellToIdx(cell_coord);
-
+                        long cell_index = inflation_layer_.cellToIdx(root_vertex);
                         int8_t cell_cost = inflation_layer_(cell_index);
 
                         std::cout << "4" << std::endl;;
@@ -291,7 +295,8 @@ namespace ee4308::turtle
 
                         std::cout << "5" << std::endl;;
                         // this function should return the length needed to update g_cost and the next vertex coordinate
-                        root_vertex = ray_tracer_.next();
+
+                        //root_vertex = ray_tracer_.next();
                         los_current_len = ray_tracer_.getLength();
 
                         std::cout << "6" << std::endl;;
