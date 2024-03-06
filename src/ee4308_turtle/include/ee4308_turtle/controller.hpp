@@ -424,11 +424,15 @@ namespace ee4308::turtle
 
             // Curvature Heuristic
             // std::cout << "Curvature: " << curvature << std::endl;
-            // lin_vel = curvature_heuristic(curvature, lin_vel);
+            double curvature_lin_vel = curvature_heuristic(curvature, lin_vel);
         
             // Proximity Heuristic
-            // lin_vel = proximity_heuristic(ranges, lin_vel);
-
+            double proximity_lin_vel = proximity_heuristic(ranges, lin_vel);
+            
+            std::cout << "curvature_lin_vel: " << curvature_lin_vel << ", proximity_lin_vel: " << proximity_lin_vel << std::endl;
+            lin_vel = std::min(curvature_lin_vel, proximity_lin_vel);
+            std::cout << "final_lin_vel: " << lin_vel << std::endl;
+            ang_vel = lin_vel * curvature;
 
             // ==== end of FIXME ====
 
@@ -445,14 +449,14 @@ namespace ee4308::turtle
         * @param lin_vel The computed linear velocity of the robot.
         * @param curvature The computed curvature of the robot's path.
         */
-        double curvature_heuristic(double &curvature, double &lin_vel) {
+        double curvature_heuristic(double &curvature, double lin_vel) {
             
             double curv_thres = params_.curve_thres;
 
             // if curvature is too large, reduce velocity
             if (abs(curvature) > curv_thres) {
                 lin_vel *= curv_thres / abs(curvature);
-                std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
+                // std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
             }
             return lin_vel;
         }
@@ -462,12 +466,13 @@ namespace ee4308::turtle
         * @param lin_vel The computed linear velocity of the robot.
         * @param ranges The LIDAR scan ranges from the sensor_msgs::msg::LaserScan::ranges.
         */
-        double proximity_heuristic(const std::vector<float> &ranges, double &lin_vel) {
+        double proximity_heuristic(const std::vector<float> &ranges, double lin_vel) {
 
             double threshold = params_.dist_thres;
 
             for (int deg = 0; deg < 360; ++deg) { // for every ray in scan,
                 double range = ranges[deg];
+                // std::cout << "Range: " << range << std::endl;
 
                 // ignore ray if range is less than lidar_min_scan_range
                 if (range < params_.lidar_min_scan_range)
@@ -476,7 +481,7 @@ namespace ee4308::turtle
                 // if ray sees an obstacle within threshold, reduce velocity
                 if (range <= threshold) {
                     lin_vel *= range / threshold;
-                    std::cout << "Robot too close to obstacle, reducing velocity to: " << lin_vel << std::endl;
+                    // std::cout << "Robot too close to obstacle, reducing velocity to: " << lin_vel << std::endl;
                     break;
                 }
             }
