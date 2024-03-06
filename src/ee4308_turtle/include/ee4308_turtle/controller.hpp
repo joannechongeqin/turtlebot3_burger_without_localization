@@ -16,6 +16,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 
 #include "ee4308_interfaces/srv/waypoint.hpp"
+#include "ee4308_interfaces/srv/path_ok.hpp"
 #include "ee4308_lib/core.hpp"
 #include "ee4308_turtle/raytracer.hpp"
 #include "ee4308_turtle/grid.hpp"
@@ -29,6 +30,9 @@ namespace ee4308::turtle
         {
             std::string get_plan = "get_plan";           // the service name to request the plan
             std::string goto_waypoint = "goto_waypoint"; // the service name to respond to a waypoint objective.
+            std::string check_path_ok = "check_path_ok";    // the service name to check if a path has crossed into a cell on the inflation layer 
+                                                            // that has a cost that is larger than path_ok_cost_threshold (i.e. is too close to an obstacle)
+                                                            // [instead of has a lethal inflation cost cuz we didnt implement exp decay inflation] 
         } services;
         struct Topics
         {
@@ -65,6 +69,7 @@ namespace ee4308::turtle
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;           // subscriber
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pub_lookahead_;           // subscriber
         rclcpp::Client<nav_msgs::srv::GetPlan>::SharedPtr client_plan_;                 // client
+        rclcpp::Client<ee4308_interfaces::srv::PathOk>::SharedPtr client_check_path_ok_; // client
         rclcpp::Service<ee4308_interfaces::srv::Waypoint>::SharedPtr service_waypoint_; // service
         rclcpp::CallbackGroup::SharedPtr cb_group_;                                     // to allow all callbacks to simultaneously occur in the executor. Requires node to be added to MultiThreaderExecutor
         std::vector<V2d> plan_;
@@ -105,6 +110,10 @@ namespace ee4308::turtle
             declare_parameter<std::string>("services.goto_waypoint", params_.services.goto_waypoint);
             get_parameter<std::string>("services.goto_waypoint", params_.services.goto_waypoint);
             RCLCPP_INFO_STREAM(get_logger(), "services.goto_waypoint: " << params_.services.goto_waypoint);
+
+            declare_parameter<std::string>("services.check_path_ok", params_.services.check_path_ok);
+            get_parameter<std::string>("services.check_path_ok", params_.services.check_path_ok);
+            RCLCPP_INFO_STREAM(get_logger(), "services.check_path_ok: " << params_.services.check_path_ok);
 
             declare_parameter<std::string>("topics.pose", params_.topics.pose);
             get_parameter<std::string>("topics.pose", params_.topics.pose);
@@ -211,6 +220,9 @@ namespace ee4308::turtle
             client_plan_ = create_client<nav_msgs::srv::GetPlan>(params_.services.get_plan,
                                                                  rmw_qos_profile_services_default, cb_group_);
 
+            client_check_path_ok_ = create_client<ee4308_interfaces::srv::PathOk>(params_.services.check_path_ok,
+                                                                 rmw_qos_profile_services_default, cb_group_);
+
             // Initialize the service
             service_waypoint_ = create_service<ee4308_interfaces::srv::Waypoint>(
                 params_.services.goto_waypoint,
@@ -313,8 +325,14 @@ namespace ee4308::turtle
                     plan_request_active = false;
                 }
 
+                bool pathOk = checkPathOk();
+                // std::cout << "Path ok?: " << pathOk << std::endl;
+
                 // check if a new plan is required
-                bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
+                // bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
+                bool need_plan = !pathOk;
+                if (need_plan) 
+                    std::cout << "Existing path is not OK. Replanning path..." << std::endl;
 
                 // start a new plan request only if there are no active requests
                 if (need_plan == true && plan_request_active == false)
@@ -405,10 +423,16 @@ namespace ee4308::turtle
             }
 
             // Curvature Heuristic
-           lin_vel = curvature_heuristic(curvature, lin_vel);
+            // std::cout << "Curvature: " << curvature << std::endl;
+            double curvature_lin_vel = curvature_heuristic(curvature, lin_vel);
         
             // Proximity Heuristic
-            lin_vel = proximity_heuristic(ranges, lin_vel);
+            double proximity_lin_vel = proximity_heuristic(ranges, lin_vel);
+            
+            std::cout << "curvature_lin_vel: " << curvature_lin_vel << ", proximity_lin_vel: " << proximity_lin_vel << std::endl;
+            lin_vel = std::min(curvature_lin_vel, proximity_lin_vel);
+            std::cout << "final_lin_vel: " << lin_vel << std::endl;
+            ang_vel = lin_vel * curvature;
 
             // ==== end of FIXME ====
 
@@ -425,14 +449,14 @@ namespace ee4308::turtle
         * @param lin_vel The computed linear velocity of the robot.
         * @param curvature The computed curvature of the robot's path.
         */
-        double curvature_heuristic(double &curvature, double &lin_vel) {
-
+        double curvature_heuristic(double &curvature, double lin_vel) {
+            
             double curv_thres = params_.curve_thres;
 
             // if curvature is too large, reduce velocity
-            if (curvature > curv_thres) {
-                lin_vel *= curv_thres / curvature;
-                std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
+            if (abs(curvature) > curv_thres) {
+                lin_vel *= curv_thres / abs(curvature);
+                // std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
             }
             return lin_vel;
         }
@@ -442,12 +466,13 @@ namespace ee4308::turtle
         * @param lin_vel The computed linear velocity of the robot.
         * @param ranges The LIDAR scan ranges from the sensor_msgs::msg::LaserScan::ranges.
         */
-        double proximity_heuristic(const std::vector<float> &ranges, double &lin_vel) {
+        double proximity_heuristic(const std::vector<float> &ranges, double lin_vel) {
 
             double threshold = params_.dist_thres;
 
             for (int deg = 0; deg < 360; ++deg) { // for every ray in scan,
                 double range = ranges[deg];
+                // std::cout << "Range: " << range << std::endl;
 
                 // ignore ray if range is less than lidar_min_scan_range
                 if (range < params_.lidar_min_scan_range)
@@ -456,7 +481,7 @@ namespace ee4308::turtle
                 // if ray sees an obstacle within threshold, reduce velocity
                 if (range <= threshold) {
                     lin_vel *= range / threshold;
-                    std::cout << "Robot too close to obstacle, reducing velocity to: " << lin_vel << std::endl;
+                    // std::cout << "Robot too close to obstacle, reducing velocity to: " << lin_vel << std::endl;
                     break;
                 }
             }
@@ -494,5 +519,31 @@ namespace ee4308::turtle
             request->goal.pose.position.y = waypoint.y;
             return client_plan_->async_send_request(request);
         }
-    };
+        
+
+        /**
+         * Request planner_smoother to check if the existing path has crossed into a cell on the inflation layer 
+         * that has a cost that is larger than path_ok_cost_threshold
+         * If yes, returns true, else false.
+         */
+        bool checkPathOk() {
+            
+            auto request_ = std::make_shared<ee4308_interfaces::srv::PathOk::Request>();
+            
+            nav_msgs::msg::Path msg_;
+            msg_.header.frame_id ="map";
+            for (const V2d &coord : plan_) {
+                geometry_msgs::msg::PoseStamped pose;
+                pose.pose.position.x = coord.x;
+                pose.pose.position.y = coord.y;
+                pose.pose.orientation.w = 1;
+                msg_.poses.push_back(pose);
+            }
+            request_->path = msg_;
+
+            auto result = client_check_path_ok_->async_send_request(request_);
+            return result.get()->pathok;
+        }
+
+     };
 }

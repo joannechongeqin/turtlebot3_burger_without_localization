@@ -101,6 +101,9 @@ namespace ee4308::turtle
                     double cost = sqrt(x * x + y * y);
                     if (sqrt(x * x + y * y) <= radius)
                     { // assign a lethal cost of 100 to inflated layer if within radius.
+                        if (sqrt(x*x + y*y) <= 1){
+                            cost = 100;
+                        }
                         V2 relative_coordinate(x, y);
                         long relative_idx = obstacle_layer_.cellToIdx(relative_coordinate);
                         sort_by_distance.emplace_back(relative_coordinate, relative_idx, cost);
@@ -189,8 +192,11 @@ namespace ee4308::turtle
                 double cost = inflation_filter_(idx_) * mask.value; // costs should always be 0 to LETHAL_COST (<=127)
                 if (cost > params_.inf_limit)
                     cost = params_.inf_limit;
-
-                inflation_layer_(idx_) = int8_t(cost);
+                
+                if (inflation_layer_(idx) != 100){
+                    inflation_layer_(idx_) = int8_t(cost);
+                }
+                
             }
         }
 

@@ -19,6 +19,7 @@
 #include "ee4308_lib/core.hpp"
 #include "ee4308_turtle/raytracer.hpp"
 #include "ee4308_turtle/grid.hpp"
+#include "ee4308_interfaces/srv/path_ok.hpp"
 
 #pragma once
 namespace ee4308::turtle
@@ -33,9 +34,14 @@ namespace ee4308::turtle
         {
             std::string get_inflation_layer = "get_inflation_layer";
             std::string get_plan = "get_plan";
+            std::string check_path_ok = "check_path_ok";    // the service name to check if a path has crossed into a cell on the inflation layer 
+                                                            // that has a cost that is larger than path_ok_cost_threshold (i.e. is too close to an obstacle)
+                                                            // [instead of has a lethal inflation cost cuz we didnt implement exp decay inflation] 
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
+        int8_t path_ok_cost_threshold = 6;
+        double dt = 0.2;
     };
 
     struct PlannerNode
@@ -135,21 +141,21 @@ namespace ee4308::turtle
         void foundPath(PlannerNode *expanded_node, const V2d &goal_coord)
         {
             PlannerNode *node = expanded_node;
-            // std::cout << "Path Found: { ";
+            std::cout << "Path Found: { ";
 
             // fill the goal coord (based on the original coordinates)
             path_.push_back(goal_coord);
-            // std::cout << path_.back() << "; ";
+            std::cout << path_.back() << "; ";
 
             // fill the coords, if any
             do
             {
                 path_.push_back(inflation_layer_.cellToWorld(node->cell, true));
-                // std::cout << path_.back() << "; ";
+                std::cout << path_.back() << "; ";
                 node = node->parent;
             } while (node != nullptr);
 
-            // std::cout << "}" << std::endl;
+            std::cout << "}" << std::endl;
         }
 
     public:
@@ -197,6 +203,7 @@ namespace ee4308::turtle
                 if (expanded_node->cell == goal_cell)
                 { // goal found. return path
                     foundPath(expanded_node, goal_coord);
+                    AStarPostProcessing();
                     break; // break to clear open_list
                 }
 
@@ -245,6 +252,43 @@ namespace ee4308::turtle
             return path();
         }
 
+        void AStarPostProcessing() { // check for los between existing points in path
+            std::vector<V2d> post_processed_path;
+            std::cout << "post processing path from " << path_[0] << " to " << path_.back() << std::endl;
+            post_processed_path.push_back(path_[0]); // add start point to post processed path
+            int from_point_idx = 0;
+            for (size_t i = 1; i < path_.size() - 1; i++) {
+                V2 from_cell = inflation_layer_.worldToCell(path_[from_point_idx]);
+                V2 to_cell = inflation_layer_.worldToCell(path_[i+1]);
+                RayTracer los(from_cell, to_cell); // check if there exists a los between the from point and the next point
+                // std::cout << "checking los between " << from_cell << " and " << to_cell << std::endl;
+                while (!los.reached()) {
+                    V2 next_point = los.next();
+                    // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
+                    int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
+                    if (cost > 0) { // if next point is not empty cell, no los
+                        // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
+                        from_point_idx++;
+                        post_processed_path.push_back(path_[i]);
+                        // std::cout << "adding " << path_[i] << " to post processed path" << std::endl;
+                        break;
+                    }
+                }
+            }
+            if (post_processed_path.back() != path_.back()) {
+                post_processed_path.push_back(path_.back()); // add last point to post processed path
+            }
+            std::cout << "post processed path: {";
+            for (size_t i = 0; i < post_processed_path.size(); ++i) {
+                std::cout << post_processed_path[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+
+            path_ = post_processed_path;
+            
+        }
+
+
         /**
          * Find turning points on a path // helper function for cubic hermite splines smoother
          */
@@ -263,7 +307,7 @@ namespace ee4308::turtle
                 V2d x_next = path[i + 1]; // x_(i+1)
                 V2d v_curr = coord - x_prev; // v_i
                 V2d v_next = x_next - coord; // v_(i+1)
-                double v_cross_product = v_curr.x * v_next.y - v_curr.y * v_next.x; // v_i x v_(i-1) // can use v_curr.cross(v_next) also
+                double v_cross_product = v_curr.cross(v_next); // v_i x v_(i-1)
                 if (abs(v_cross_product) > 1e-5) {  // if cross product !=0, the three points are not parallel, turning point found at x_i
                     turning_points.push_back(coord);
                 }
@@ -286,9 +330,18 @@ namespace ee4308::turtle
         /**
          * Implement smoother using cubic hermite splines 
          */
-        std::vector<V2d> smootherCubicHermiteSplines(const std::vector<V2d> &path) {
+        std::vector<V2d> cubic_hermite_spline_smoother(const std::vector<V2d> &path) {
             // find turning points along found path
             std::vector<V2d> turning_points = findTurningPoints(path);
+            std::cout << "turning point: {";
+            for (size_t i = 0; i < turning_points.size(); ++i) {
+                std::cout << turning_points[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+            
+            if (turning_points.size() < 3) {
+                return path;
+            }
 
             // for each segment on the new path, generate the cubic spline
             std::vector<V2d> smooth_path;
@@ -328,7 +381,7 @@ namespace ee4308::turtle
                 
                 // interpolate
                 smooth_path.push_back(p0); // add start point to final smooth path
-                double dt = 0.1; // TODO to tune or add as parameter to params
+                double dt = params_.dt;
                 for (double t = dt; t < time; t += dt) { 
                     double t2 = t * t, t3 = t2 * t; // t^2, t^3
                     double x_new = a0 + a1 * t + a2 * t2 + a3 * t3;
@@ -391,19 +444,33 @@ namespace ee4308::turtle
          */
         const std::vector<V2d> &smooth() // FIXME
         {
+            std::cout << "Running smoother..." << std::endl;
             // cubic hermite splines smoother
-            std::vector<V2d> cubicHermite_smooth_path = smootherCubicHermiteSplines(path_);
+            std::vector<V2d> cubicHermite_smooth_path = cubic_hermite_spline_smoother(path_);
 
             // savitsky-golay moving average smoother
-            std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 5);
+            std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 3);
 
             // replace the path_ with the smooth_path
             path_ = cubicHermite_smooth_path;
+            
+            std::cout << "smoothed path: {"; 
+            for (size_t i = 0; i < path_.size(); ++i) {
+                  std::cout << path_[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+            std::cout << "smoother run complete." << std::endl;
 
             return path(); // returns path_
         }
 
-
+        bool checkWorldPointOk(const V2d &point) {
+            V2 cell = inflation_layer_.worldToCell(point);
+            long idx = inflation_layer_.cellToIdx(cell);
+            int cost = inflation_layer_(idx);
+            // std::cout << point << " with cost " << cost << std::endl;
+            return cost <= params_.path_ok_cost_threshold;
+        }
 
         /**
          * Updates the local copy of the cost map (inflation layer) to search the paths on.
@@ -446,6 +513,7 @@ namespace ee4308::turtle
         rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_path_;              // publisher
         rclcpp::Client<nav_msgs::srv::GetMap>::SharedPtr client_inflation_layer_; // client
         rclcpp::Service<nav_msgs::srv::GetPlan>::SharedPtr service_plan_;         // service
+        rclcpp::Service<ee4308_interfaces::srv::PathOk>::SharedPtr service_check_path_ok_; // service
         std::shared_ptr<PlannerSmoother> planner_smoother_;                       // the planner and smoothing class tied to this node.
         rclcpp::CallbackGroup::SharedPtr cb_group_;                               // to allow all callbacks to simultaneously occur in the executor. Requires node to be added to MultiThreaderExecutor
         std::mutex mutex_;                                                        // required to prevent data races
@@ -489,6 +557,10 @@ namespace ee4308::turtle
             get_parameter<std::string>("services.get_inflation_layer", params_.services.get_inflation_layer);
             RCLCPP_INFO_STREAM(get_logger(), "services.get_inflation_layer: " << params_.services.get_inflation_layer);
 
+            declare_parameter<std::string>("services.check_path_ok", params_.services.check_path_ok);
+            get_parameter<std::string>("services.check_path_ok", params_.services.check_path_ok);
+            RCLCPP_INFO_STREAM(get_logger(), "services.check_path_ok: " << params_.services.check_path_ok);
+
             declare_parameter<std::string>("services.get_plan", params_.services.get_plan);
             get_parameter<std::string>("services.get_plan", params_.services.get_plan);
             RCLCPP_INFO_STREAM(get_logger(), "services.get_plan: " << params_.services.get_plan);
@@ -500,6 +572,14 @@ namespace ee4308::turtle
             declare_parameter<double>("spline_vel", params_.spline_vel);
             get_parameter<double>("spline_vel", params_.spline_vel);
             RCLCPP_INFO_STREAM(get_logger(), "spline_vel: " << params_.spline_vel);
+
+            declare_parameter<int8_t>("path_ok_cost_threshold", params_.path_ok_cost_threshold);
+            get_parameter<int8_t>("path_ok_cost_threshold", params_.path_ok_cost_threshold);
+            RCLCPP_INFO_STREAM(get_logger(), "path_ok_cost_threshold: " << params_.path_ok_cost_threshold);
+
+            declare_parameter<double>("dt", params_.dt);
+            get_parameter<double>("dt", params_.dt);
+            RCLCPP_INFO_STREAM(get_logger(), "dt: " << params_.dt);
         }
 
         /**
@@ -522,6 +602,10 @@ namespace ee4308::turtle
             service_plan_ = create_service<nav_msgs::srv::GetPlan>(
                 params_.services.get_plan,
                 std::bind(&ROSNodePlannerSmoother::servicePlan, this, std::placeholders::_1, std::placeholders::_2),
+                rmw_qos_profile_services_default, cb_group_);
+            service_check_path_ok_ = create_service<ee4308_interfaces::srv::PathOk>(
+                params_.services.check_path_ok,
+                std::bind(&ROSNodePlannerSmoother::serviceCheckPathOk, this, std::placeholders::_1, std::placeholders::_2),
                 rmw_qos_profile_services_default, cb_group_);
 
             // wait for service to respond
@@ -581,6 +665,8 @@ namespace ee4308::turtle
             V2d start_coord = {request->start.pose.position.x, request->start.pose.position.y};
             V2d goal_coord = {request->goal.pose.position.x, request->goal.pose.position.y};
 
+            // std::cout << "======================================" << std::endl;
+
             // find the shortest path and store the path within the class.
             std::cout << "Running Planner..." << std::endl;
             planner_smoother_->run(start_coord, goal_coord);
@@ -598,6 +684,26 @@ namespace ee4308::turtle
 
             // respond with the path
             response->plan = msg;
+        }
+
+        void serviceCheckPathOk(const std::shared_ptr<ee4308_interfaces::srv::PathOk::Request> request,
+                                 std::shared_ptr<ee4308_interfaces::srv::PathOk::Response> response) {
+            
+            auto path = request->path.poses;
+            // request a map. If shutdown or failed, return the default plan (nothing).
+            if (requestInflationLayer() == false) {
+                std::cout << "Inflation layer cannot be requested. Check failed." << std::endl;
+                return;
+            }
+            std::vector<V2d> path_vector;
+            for(std::vector<geometry_msgs::msg::PoseStamped>::const_iterator it = path.begin(); it != path.end(); ++it) {
+                V2d point = V2d(it->pose.position.x, it->pose.position.y);
+                if (!planner_smoother_->checkWorldPointOk(point)) {
+                    response->pathok = false;
+                    return;
+                }
+            }
+            response->pathok = true;
         }
     };
 }

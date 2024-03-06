@@ -12,8 +12,8 @@ turtle:
         imu: "imu" # {string} the topic to subscribe to the tbot's imu
         wheels: "joint_states" # {string} the topic to subscribe to the tbot's wheel encoders.
         pose: "pose" # {string} the topic to publish the estimated pose.
-      imu_lin_gain: 0.02 # {double} the amount of imu linear gain, between 0 and 1.
-      imu_ang_gain: 0.01 # {double} the amount of imu angular gain, between 0 and 1.
+      imu_lin_gain: 0.015 # {double} the amount of imu linear gain, between 0 and 1.
+      imu_ang_gain: 0.015 # {double} the amount of imu angular gain, between 0 and 1.
       frequency: 40. # {double} how often the robot's motion is estimated (Hz).
       wheel_radius: 0.033 # {double} the wheel radius (m).
       axle_track: 0.16 # {double} the axle track (m).
@@ -24,17 +24,21 @@ turtle:
     ros__parameters:
       topics:
         plan: "plan" # {string} topic to publish the path to, after a service request is completed.
+        check_path_ok: "check_path_ok" # {string} the service name to check if a path is ok
       services:
         get_inflation_layer: "get_inflation_layer" # {string} service name to request for the inflation layer
         get_plan: "get_plan" # {string} service name to service a plan request.
       frame_id: "map" # The parent tf2 frame of the path.
       spline_vel: 0.2 # {double} The boundary velocity for the cubic or quintic spline.
+      dt: 0.2 # {double} The time step for the cubic or quintic spline.
+      path_ok_cost_threshold: 3 # {int} The cost threshold for points in a path to be considered as an ok path.
 
   controller:
     ros__parameters:
       services:
         get_plan: "get_plan" # {string} the service name to get the trajectory from the planner
         goto_waypoint: "goto_waypoint" # {string} the service name to service a waypoint request
+        check_path_ok: "check_path_ok" # {string} the service name to check if a path is ok
       topics:
         pose: "pose" # {string} the topic to listen to the estimated pose.
         scan: "scan" # {string} topic name to get the laser scans of the robot.
@@ -49,8 +53,8 @@ turtle:
       frequency: 20. # {double} the rate to run the controller (Hz)
       plan_frequency: 1. # {double} the rate to request a path (Hz)
       lookahead_lin_vel: 0.22 # {double} the lookahead linear velocity (m/s)
-      dist_thres: 0.1  # {double} threshold distance (m)
-      curve_thres: 0.1  # {double} curvature threshold (m)
+      dist_thres: 0.15 # {double} threshold distance (m)
+      curve_thres: 4.5 # {double} curvature threshold (m)
       lidar_min_scan_range: 0.12001 # {double} Do not change. Minimum scan range for turtlebot's lidar in meters.
 
   mapper:
