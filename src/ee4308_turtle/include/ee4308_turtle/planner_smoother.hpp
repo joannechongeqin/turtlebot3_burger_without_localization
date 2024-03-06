@@ -400,13 +400,13 @@ namespace ee4308::turtle
             std::vector<V2d> savitskyGolay_smooth_path = savitsky_golay_smoother(path_, 3, 3);
 
             // replace the path_ with the smooth_path
-            path_ = cubicHermite_smooth_path;
+            // path_ = cubicHermite_smooth_path;
             
-            std::cout << "smoothed path: {"; 
-            for (size_t i = 0; i < path_.size(); ++i) {
-                  std::cout << path_[i] << "; ";
-            }
-            std::cout << "}" << std::endl;
+            // std::cout << "smoothed path: {"; 
+            // for (size_t i = 0; i < path_.size(); ++i) {
+            //       std::cout << path_[i] << "; ";
+            // }
+            // std::cout << "}" << std::endl;
 
             return path(); // returns path_
         }
