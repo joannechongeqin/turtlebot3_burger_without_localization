@@ -38,6 +38,7 @@ namespace ee4308::turtle
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
+        int8_t lethal_cost = 0;
     };
 
     struct PlannerNode
@@ -263,7 +264,7 @@ namespace ee4308::turtle
                     V2 next_point = los.next();
                     // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
                     int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
-                    int LETHAL_COST = 0;
+                    int LETHAL_COST = params_.lethal_cost;
                     if (cost > LETHAL_COST) { // if next point is wthin inflation layer, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
                         from_point_idx++;
@@ -467,7 +468,7 @@ namespace ee4308::turtle
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 3; // TODO: to tune and add to params?
+            int LETHAL_COST = params_.lethal_cost; 
             return cost < LETHAL_COST;
         }
 
@@ -571,6 +572,10 @@ namespace ee4308::turtle
             declare_parameter<double>("spline_vel", params_.spline_vel);
             get_parameter<double>("spline_vel", params_.spline_vel);
             RCLCPP_INFO_STREAM(get_logger(), "spline_vel: " << params_.spline_vel);
+
+            declare_parameter<int8_t>("lethal_cost", params_.lethal_cost);
+            get_parameter<int8_t>("lethal_cost", params_.lethal_cost);
+            RCLCPP_INFO_STREAM(get_logger(), "lethal_cost: " << params_.lethal_cost);
         }
 
         /**
