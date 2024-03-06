@@ -29,7 +29,7 @@ turtle:
         get_plan: "get_plan" # {string} service name to service a plan request.
       frame_id: "map" # The parent tf2 frame of the path.
       spline_vel: 0.2 # {double} The boundary velocity for the cubic or quintic spline.
-      lethal_cost: 12 # The lethal cost for theta* implementation
+      lethal_cost: 10 # The lethal cost for theta* implementation
 
   controller:
     ros__parameters:
@@ -72,7 +72,7 @@ turtle:
       resolution: 0.05 # {double} Length of a cell in meters.
       min_scan_range: 0.12001 # {double} Do not change. Minimum scan range for turtlebot's lidar in meters.
       max_scan_range: 3.49999 # {double} Do not change. Maximum scan range for turtlebot's lidar in meters.
-      inflation_radius: 0.1 # {double} Inflation radius in meters.
+      inflation_radius: 0.15 # {double} Inflation radius in meters.
       inf_limit: 30. # {double} The maximum cost on the inflation layer. Between 0 and 100.
       inflate: 3. # {double} The amount to increment for an inflation layer cell for every nearby occupied cell in the inflation radius. Between 0 and 100.
       oc_limit: 100 # {int} The maximum cost on the obstacle layer. Between 0 and 100.
