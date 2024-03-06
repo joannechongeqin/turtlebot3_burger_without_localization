@@ -12,8 +12,8 @@ turtle:
         imu: "imu" # {string} the topic to subscribe to the tbot's imu
         wheels: "joint_states" # {string} the topic to subscribe to the tbot's wheel encoders.
         pose: "pose" # {string} the topic to publish the estimated pose.
-      imu_lin_gain: 0.02 # {double} the amount of imu linear gain, between 0 and 1.
-      imu_ang_gain: 0.01 # {double} the amount of imu angular gain, between 0 and 1.
+      imu_lin_gain: 0.015 # {double} the amount of imu linear gain, between 0 and 1.
+      imu_ang_gain: 0.02 # {double} the amount of imu angular gain, between 0 and 1.
       frequency: 40. # {double} how often the robot's motion is estimated (Hz).
       wheel_radius: 0.033 # {double} the wheel radius (m).
       axle_track: 0.16 # {double} the axle track (m).
@@ -42,15 +42,15 @@ turtle:
         lookahead: "lookahead" # {string} the topic to publish the lookahead point.
       nearby: 0.1 # {double} the threshold in meters to determine if a waypoint is close enough.
       lookahead: 0.1 # {double} the maximum lookahead distance
-      max_lin_vel: 0.05 # {double} the maximum linear velocity (m/s)
+      max_lin_vel: 0.055 # {double} the maximum linear velocity (m/s)
       max_lin_acc: 1. # {double} the maxmum linear acceleration (m/s/s)
       max_ang_vel: 0.4 # {double} the maximum angular velocity (rad/s)
       max_ang_acc: 3. # {double} the maxmum angular acceleration (rad/s/s)
       frequency: 20. # {double} the rate to run the controller (Hz)
       plan_frequency: 1. # {double} the rate to request a path (Hz)
       lookahead_lin_vel: 0.22 # {double} the lookahead linear velocity (m/s)
-      dist_thres: 0.08 # {double} threshold distance (m)
-      curve_thres: 1.0 # {double} curvature threshold (m)
+      dist_thres: 0.15 # {double} threshold distance (m)
+      curve_thres: 1.5 # {double} curvature threshold (m)
       lidar_min_scan_range: 0.12001 # {double} Do not change. Minimum scan range for turtlebot's lidar in meters.
 
   mapper:

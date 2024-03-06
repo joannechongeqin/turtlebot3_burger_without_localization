@@ -330,7 +330,7 @@ namespace ee4308::turtle
                 // bool need_plan = (now() - last_plan_time > plan_period && plan_.size() > 1) || plan_.empty() == true; // the empty condition is redundancy
                 bool need_plan = pathWithinInflation;
                 if (need_plan) 
-                    std::cout << "Existing path is too close to an obstacle. Replanning path..." << std::endl;
+                    std::cout << "Existing path is in lethal zone. Replanning path..." << std::endl;
 
                 // start a new plan request only if there are no active requests
                 if (need_plan == true && plan_request_active == false)
@@ -448,7 +448,7 @@ namespace ee4308::turtle
             double curv_thres = params_.curve_thres;
 
             // if curvature is too large, reduce velocity
-            if (curvature > curv_thres) {
+            if (abs(curvature) > curv_thres) {
                 lin_vel *= curv_thres / curvature;
                 std::cout << "Curvature is too large, reducing velocity to: " << lin_vel << std::endl;
             }
