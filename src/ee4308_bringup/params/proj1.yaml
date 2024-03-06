@@ -30,7 +30,7 @@ turtle:
       frame_id: "map" # The parent tf2 frame of the path.
       spline_vel: 0.2 # {double} The boundary velocity for the cubic or quintic spline.
       dt: 0.2 # {double} The time step for the cubic or quintic spline.
-      lethal_cost: 6 # {int} The lethal cost on the inflation layer.
+      path_ok_cost_threshold: 3 # {int} The cost threshold for points in a path to be considered as an ok path.
 
   controller:
     ros__parameters:

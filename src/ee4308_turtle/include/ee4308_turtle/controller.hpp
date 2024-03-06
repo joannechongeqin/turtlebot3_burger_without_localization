@@ -30,7 +30,9 @@ namespace ee4308::turtle
         {
             std::string get_plan = "get_plan";           // the service name to request the plan
             std::string goto_waypoint = "goto_waypoint"; // the service name to respond to a waypoint objective.
-            std::string check_path_ok = "check_path_ok"; // the service name to check if a path has crossed into a cell on the inflation layer that has a lethal inflation cost (i.e. is too close to an obstacle)
+            std::string check_path_ok = "check_path_ok";    // the service name to check if a path has crossed into a cell on the inflation layer 
+                                                            // that has a cost that is larger than path_ok_cost_threshold (i.e. is too close to an obstacle)
+                                                            // [instead of has a lethal inflation cost cuz we didnt implement exp decay inflation] 
         } services;
         struct Topics
         {
@@ -516,7 +518,7 @@ namespace ee4308::turtle
 
         /**
          * Request planner_smoother to check if the existing path has crossed into a cell on the inflation layer 
-         * that has a lethal inflation cost (i.e. is too close to an obstacle). 
+         * that has a cost that is larger than path_ok_cost_threshold
          * If yes, returns true, else false.
          */
         bool checkPathOk() {

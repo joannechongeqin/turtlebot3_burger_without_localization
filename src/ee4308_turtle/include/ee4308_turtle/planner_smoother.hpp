@@ -34,11 +34,13 @@ namespace ee4308::turtle
         {
             std::string get_inflation_layer = "get_inflation_layer";
             std::string get_plan = "get_plan";
-            std::string check_path_ok = "check_path_ok"; // the service name to check if a path has crossed into a cell on the inflation layer that has a lethal inflation cost (i.e. is too close to an obstacle)
+            std::string check_path_ok = "check_path_ok";    // the service name to check if a path has crossed into a cell on the inflation layer 
+                                                            // that has a cost that is larger than path_ok_cost_threshold (i.e. is too close to an obstacle)
+                                                            // [instead of has a lethal inflation cost cuz we didnt implement exp decay inflation] 
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
-        int8_t lethal_cost = 3;
+        int8_t path_ok_cost_threshold = 6;
         double dt = 0.2;
     };
 
@@ -252,12 +254,12 @@ namespace ee4308::turtle
 
         void AStarPostProcessing() { // check for los between existing points in path
             std::vector<V2d> post_processed_path;
-            std::cout << "post processing path from " << path[0] << " to " << path.back() << std::endl;
-            post_processed_path.push_back(path[0]); // add start point to post processed path
+            std::cout << "post processing path from " << path_[0] << " to " << path_.back() << std::endl;
+            post_processed_path.push_back(path_[0]); // add start point to post processed path
             int from_point_idx = 0;
-            for (size_t i = 1; i < path.size() - 1; i++) {
-                V2 from_cell = inflation_layer_.worldToCell(path[from_point_idx]);
-                V2 to_cell = inflation_layer_.worldToCell(path[i+1]);
+            for (size_t i = 1; i < path_.size() - 1; i++) {
+                V2 from_cell = inflation_layer_.worldToCell(path_[from_point_idx]);
+                V2 to_cell = inflation_layer_.worldToCell(path_[i+1]);
                 RayTracer los(from_cell, to_cell); // check if there exists a los between the from point and the next point
                 // std::cout << "checking los between " << from_cell << " and " << to_cell << std::endl;
                 while (!los.reached()) {
@@ -267,14 +269,14 @@ namespace ee4308::turtle
                     if (cost > 0) { // if next point is not empty cell, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
                         from_point_idx++;
-                        post_processed_path.push_back(path[i]);
-                        // std::cout << "adding " << path[i] << " to post processed path" << std::endl;
+                        post_processed_path.push_back(path_[i]);
+                        // std::cout << "adding " << path_[i] << " to post processed path" << std::endl;
                         break;
                     }
                 }
             }
-            if (post_processed_path.back() != path.back()) {
-                post_processed_path.push_back(path.back()); // add last point to post processed path
+            if (post_processed_path.back() != path_.back()) {
+                post_processed_path.push_back(path_.back()); // add last point to post processed path
             }
             std::cout << "post processed path: {";
             for (size_t i = 0; i < post_processed_path.size(); ++i) {
@@ -467,8 +469,7 @@ namespace ee4308::turtle
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = params_.lethal_cost; 
-            return cost <= 5;
+            return cost <= params_.path_ok_cost_threshold;
         }
 
         /**
@@ -572,9 +573,9 @@ namespace ee4308::turtle
             get_parameter<double>("spline_vel", params_.spline_vel);
             RCLCPP_INFO_STREAM(get_logger(), "spline_vel: " << params_.spline_vel);
 
-            declare_parameter<int8_t>("lethal_cost", params_.lethal_cost);
-            get_parameter<int8_t>("lethal_cost", params_.lethal_cost);
-            RCLCPP_INFO_STREAM(get_logger(), "lethal_cost: " << params_.lethal_cost);
+            declare_parameter<int8_t>("path_ok_cost_threshold", params_.path_ok_cost_threshold);
+            get_parameter<int8_t>("path_ok_cost_threshold", params_.path_ok_cost_threshold);
+            RCLCPP_INFO_STREAM(get_logger(), "path_ok_cost_threshold: " << params_.path_ok_cost_threshold);
 
             declare_parameter<double>("dt", params_.dt);
             get_parameter<double>("dt", params_.dt);
