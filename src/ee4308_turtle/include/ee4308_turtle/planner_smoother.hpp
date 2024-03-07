@@ -266,7 +266,7 @@ namespace ee4308::turtle
                     V2 next_point = los.next();
                     // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
                     int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
-                    if (cost > 0) { // if next point is not empty cell, no los
+                    if (cost > 2) { // if next point is not empty cell, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
                         from_point_idx++;
                         post_processed_path.push_back(path_[i]);
