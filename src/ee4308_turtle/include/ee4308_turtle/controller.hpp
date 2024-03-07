@@ -419,7 +419,7 @@ namespace ee4308::turtle
             // reverse the robot if waypoint lies at the back of the robot (x' is negative)
             if (xx < 0) {
                 lin_vel = -lin_vel;
-                ang_vel = -ang_vel;
+                ang_vel *= sgn(lin_vel) * sgn(curvature);
             }
 
             // Curvature Heuristic
