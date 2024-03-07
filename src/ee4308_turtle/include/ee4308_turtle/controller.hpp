@@ -413,19 +413,19 @@ namespace ee4308::turtle
                 ang_vel = new_ang_vel;
             else
                 ang_vel = params_.max_ang_vel * sgn(new_ang_vel);
-            
+        
+            // Curvature Heuristic
+            // std::cout << "Curvature: " << curvature << std::endl;
+            double curv_lin_vel = curvature_heuristic(curvature, lin_vel);
+        
+            // Proximity Heuristic
+            double prox_lin_vel = proximity_heuristic(ranges, lin_vel);
+
             // reverse the robot if waypoint lies at the back of the robot (x' is negative)
             if (xx < 0) {
                 lin_vel = -lin_vel;
-                ang_vel = -ang_vel;
+                ang_vel *= sgn(lin_vel) * sgn(curvature);
             }
-
-            // Curvature Heuristic
-            // std::cout << "Curvature: " << curvature << std::endl;
-            // lin_vel = curvature_heuristic(curvature, lin_vel);
-        
-            // Proximity Heuristic
-            // lin_vel = proximity_heuristic(ranges, lin_vel);
 
 
             // ==== end of FIXME ====
