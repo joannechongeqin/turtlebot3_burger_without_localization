@@ -19,7 +19,7 @@
 #include "ee4308_lib/core.hpp"
 #include "ee4308_turtle/raytracer.hpp"
 #include "ee4308_turtle/grid.hpp"
-#include "ee4308_interfaces/srv/path_within_inflation.hpp"
+#include "ee4308_interfaces/srv/path_ok.hpp"
 
 #pragma once
 namespace ee4308::turtle
@@ -34,10 +34,14 @@ namespace ee4308::turtle
         {
             std::string get_inflation_layer = "get_inflation_layer";
             std::string get_plan = "get_plan";
-            std::string check_path_within_inflation = "check_path_within_inflation"; // the service name to check if a path has crossed into a cell on the inflation layer that has a lethal inflation cost (i.e. is too close to an obstacle)
+            std::string check_path_ok = "check_path_ok";    // the service name to check if a path has crossed into a cell on the inflation layer 
+                                                            // that has a cost that is larger than path_ok_cost_threshold (i.e. is too close to an obstacle)
+                                                            // [instead of has a lethal inflation cost cuz we didnt implement exp decay inflation] 
         } services;
         std::string frame_id = "map";
         double spline_vel = 0.2;
+        int8_t path_ok_cost_threshold = 6;
+        double dt = 0.2;
     };
 
     struct PlannerNode
@@ -199,7 +203,7 @@ namespace ee4308::turtle
                 if (expanded_node->cell == goal_cell)
                 { // goal found. return path
                     foundPath(expanded_node, goal_coord);
-                    AStarPostProcessing(path_);
+                    AStarPostProcessing();
                     break; // break to clear open_list
                 }
 
@@ -248,33 +252,31 @@ namespace ee4308::turtle
             return path();
         }
 
-        void AStarPostProcessing(std::vector<V2d> path) { // check for los between existing points in path
+        void AStarPostProcessing() { // check for los between existing points in path
             std::vector<V2d> post_processed_path;
-            // std::cout << "======================================";  
-            std::cout << "post processing path from " << path[0] << " to " << path.back() << std::endl;
-            post_processed_path.push_back(path[0]); // add start point to post processed path
+            std::cout << "post processing path from " << path_[0] << " to " << path_.back() << std::endl;
+            post_processed_path.push_back(path_[0]); // add start point to post processed path
             int from_point_idx = 0;
-            for (size_t i = 1; i < path.size() - 1; i++) {
-                V2 from_cell = inflation_layer_.worldToCell(path[from_point_idx]);
-                V2 to_cell = inflation_layer_.worldToCell(path[i+1]);
+            for (size_t i = 1; i < path_.size() - 1; i++) {
+                V2 from_cell = inflation_layer_.worldToCell(path_[from_point_idx]);
+                V2 to_cell = inflation_layer_.worldToCell(path_[i+1]);
                 RayTracer los(from_cell, to_cell); // check if there exists a los between the from point and the next point
                 // std::cout << "checking los between " << from_cell << " and " << to_cell << std::endl;
                 while (!los.reached()) {
                     V2 next_point = los.next();
                     // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
                     int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
-                    int LETHAL_COST = 0;
-                    if (cost > LETHAL_COST) { // if next point is wthin inflation layer, no los
+                    if (cost > 0) { // if next point is not empty cell, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
                         from_point_idx++;
-                        post_processed_path.push_back(path[i]);
-                        // std::cout << "adding " << path[i] << " to post processed path" << std::endl;
+                        post_processed_path.push_back(path_[i]);
+                        // std::cout << "adding " << path_[i] << " to post processed path" << std::endl;
                         break;
                     }
                 }
             }
-            if (post_processed_path.back() != path.back()) {
-                post_processed_path.push_back(path.back()); // add last point to post processed path
+            if (post_processed_path.back() != path_.back()) {
+                post_processed_path.push_back(path_.back()); // add last point to post processed path
             }
             std::cout << "post processed path: {";
             for (size_t i = 0; i < post_processed_path.size(); ++i) {
@@ -379,7 +381,7 @@ namespace ee4308::turtle
                 
                 // interpolate
                 smooth_path.push_back(p0); // add start point to final smooth path
-                double dt = 0.2; // TODO to tune or add as parameter to params
+                double dt = params_.dt;
                 for (double t = dt; t < time; t += dt) { 
                     double t2 = t * t, t3 = t2 * t; // t^2, t^3
                     double x_new = a0 + a1 * t + a2 * t2 + a3 * t3;
@@ -462,13 +464,12 @@ namespace ee4308::turtle
             return path(); // returns path_
         }
 
-        bool checkPointWithinInflation(const V2d &point) {
+        bool checkWorldPointOk(const V2d &point) {
             V2 cell = inflation_layer_.worldToCell(point);
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
             // std::cout << point << " with cost " << cost << std::endl;
-            int LETHAL_COST = 3; // TODO: to tune and add to params?
-            return cost >= LETHAL_COST;
+            return cost <= params_.path_ok_cost_threshold;
         }
 
         /**
@@ -512,7 +513,7 @@ namespace ee4308::turtle
         rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_path_;              // publisher
         rclcpp::Client<nav_msgs::srv::GetMap>::SharedPtr client_inflation_layer_; // client
         rclcpp::Service<nav_msgs::srv::GetPlan>::SharedPtr service_plan_;         // service
-        rclcpp::Service<ee4308_interfaces::srv::PathWithinInflation>::SharedPtr service_check_path_; // service
+        rclcpp::Service<ee4308_interfaces::srv::PathOk>::SharedPtr service_check_path_ok_; // service
         std::shared_ptr<PlannerSmoother> planner_smoother_;                       // the planner and smoothing class tied to this node.
         rclcpp::CallbackGroup::SharedPtr cb_group_;                               // to allow all callbacks to simultaneously occur in the executor. Requires node to be added to MultiThreaderExecutor
         std::mutex mutex_;                                                        // required to prevent data races
@@ -556,9 +557,9 @@ namespace ee4308::turtle
             get_parameter<std::string>("services.get_inflation_layer", params_.services.get_inflation_layer);
             RCLCPP_INFO_STREAM(get_logger(), "services.get_inflation_layer: " << params_.services.get_inflation_layer);
 
-            declare_parameter<std::string>("services.check_path_within_inflation", params_.services.check_path_within_inflation);
-            get_parameter<std::string>("services.check_path_within_inflation", params_.services.check_path_within_inflation);
-            RCLCPP_INFO_STREAM(get_logger(), "services.check_path_within_inflation: " << params_.services.check_path_within_inflation);
+            declare_parameter<std::string>("services.check_path_ok", params_.services.check_path_ok);
+            get_parameter<std::string>("services.check_path_ok", params_.services.check_path_ok);
+            RCLCPP_INFO_STREAM(get_logger(), "services.check_path_ok: " << params_.services.check_path_ok);
 
             declare_parameter<std::string>("services.get_plan", params_.services.get_plan);
             get_parameter<std::string>("services.get_plan", params_.services.get_plan);
@@ -571,6 +572,14 @@ namespace ee4308::turtle
             declare_parameter<double>("spline_vel", params_.spline_vel);
             get_parameter<double>("spline_vel", params_.spline_vel);
             RCLCPP_INFO_STREAM(get_logger(), "spline_vel: " << params_.spline_vel);
+
+            declare_parameter<int8_t>("path_ok_cost_threshold", params_.path_ok_cost_threshold);
+            get_parameter<int8_t>("path_ok_cost_threshold", params_.path_ok_cost_threshold);
+            RCLCPP_INFO_STREAM(get_logger(), "path_ok_cost_threshold: " << params_.path_ok_cost_threshold);
+
+            declare_parameter<double>("dt", params_.dt);
+            get_parameter<double>("dt", params_.dt);
+            RCLCPP_INFO_STREAM(get_logger(), "dt: " << params_.dt);
         }
 
         /**
@@ -594,9 +603,9 @@ namespace ee4308::turtle
                 params_.services.get_plan,
                 std::bind(&ROSNodePlannerSmoother::servicePlan, this, std::placeholders::_1, std::placeholders::_2),
                 rmw_qos_profile_services_default, cb_group_);
-            service_check_path_ = create_service<ee4308_interfaces::srv::PathWithinInflation>(
-                params_.services.check_path_within_inflation,
-                std::bind(&ROSNodePlannerSmoother::serviceCheckPath, this, std::placeholders::_1, std::placeholders::_2),
+            service_check_path_ok_ = create_service<ee4308_interfaces::srv::PathOk>(
+                params_.services.check_path_ok,
+                std::bind(&ROSNodePlannerSmoother::serviceCheckPathOk, this, std::placeholders::_1, std::placeholders::_2),
                 rmw_qos_profile_services_default, cb_group_);
 
             // wait for service to respond
@@ -677,8 +686,8 @@ namespace ee4308::turtle
             response->plan = msg;
         }
 
-        void serviceCheckPath(const std::shared_ptr<ee4308_interfaces::srv::PathWithinInflation::Request> request,
-                                 std::shared_ptr<ee4308_interfaces::srv::PathWithinInflation::Response> response) {
+        void serviceCheckPathOk(const std::shared_ptr<ee4308_interfaces::srv::PathOk::Request> request,
+                                 std::shared_ptr<ee4308_interfaces::srv::PathOk::Response> response) {
             
             auto path = request->path.poses;
             // request a map. If shutdown or failed, return the default plan (nothing).
@@ -689,12 +698,12 @@ namespace ee4308::turtle
             std::vector<V2d> path_vector;
             for(std::vector<geometry_msgs::msg::PoseStamped>::const_iterator it = path.begin(); it != path.end(); ++it) {
                 V2d point = V2d(it->pose.position.x, it->pose.position.y);
-                if (planner_smoother_->checkPointWithinInflation(point)) {
-                    response->path_within_inflation = true;
+                if (!planner_smoother_->checkWorldPointOk(point)) {
+                    response->pathok = false;
                     return;
                 }
             }
-            response->path_within_inflation = false;
+            response->pathok = true;
         }
     };
 }
