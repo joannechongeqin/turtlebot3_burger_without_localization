@@ -46,7 +46,7 @@ turtle:
         lookahead: "lookahead" # {string} the topic to publish the lookahead point.
       nearby: 0.1 # {double} the threshold in meters to determine if a waypoint is close enough.
       lookahead: 0.1 # {double} the maximum lookahead distance
-      max_lin_vel: 0.06 # {double} the maximum linear velocity (m/s)
+      max_lin_vel: 0.065 # {double} the maximum linear velocity (m/s)
       max_lin_acc: 1. # {double} the maxmum linear acceleration (m/s/s)
       max_ang_vel: 0.4 # {double} the maximum angular velocity (rad/s)
       max_ang_acc: 3. # {double} the maxmum angular acceleration (rad/s/s)
