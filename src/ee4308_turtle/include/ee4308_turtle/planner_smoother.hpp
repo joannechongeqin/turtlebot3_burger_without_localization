@@ -203,7 +203,7 @@ namespace ee4308::turtle
                 if (expanded_node->cell == goal_cell)
                 { // goal found. return path
                     foundPath(expanded_node, goal_coord);
-                    AStarPostProcessing();
+                    AStarPostProcessing2();
                     break; // break to clear open_list
                 }
 
@@ -288,7 +288,63 @@ namespace ee4308::turtle
             
         }
 
+        void AStarPostProcessing2(){
+            std::vector<V2d> post_processed_path;
+            std::cout << "post processing path from " << path_[0] << " to " << path_.back() << std::endl;
+            post_processed_path.push_back(path_[0]); // add start point to post processed path
+            V2 end_cell = inflation_layer_.worldToCell(path_.back()); // Cell at the very end of the path
+            bool reached_end = false;
+            int current_idx = 0;
+            int check_idx = current_idx;
 
+            while (!reached_end){
+                //Increment check_idx to check next point:
+                check_idx++;
+
+                V2 from_cell = inflation_layer_.worldToCell(path_[current_idx]);
+                V2 to_cell = inflation_layer_.worldToCell(path_[check_idx]);
+                RayTracer los(from_cell, to_cell); // check if there exists a los between the from point and the next point
+                
+                // Check if los is blocked
+                while (!los.reached()) {
+                    V2 next_point = los.next(); // move the the next vertex
+                    // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
+                    int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
+                    if (cost > 0) { // if next point is not empty cell, no los
+                        // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
+
+                        // If the point that you check has an obstruction, push the previous point (check_idx-1 into the path)
+                        post_processed_path.push_back(path_[check_idx-1]);
+                        // std::cout << "adding " << path_[i] << " to post processed path" << std::endl;
+
+                        //assign the new current index to be check_idx - 1
+                        current_idx = check_idx-1;
+
+                        //restart check_idx bcs increment at the start will push the check_idx automatically ot the next point
+                        check_idx = current_idx;
+                        break;
+                    }
+                }
+
+                // If no obstruction and it is the final point, then set reached_end to be true and push the check_idx value into the post_processed_path
+                if (to_cell == end_cell){
+                    reached_end = true;
+                    post_processed_path.push_back(path_[check_idx]);
+                }                
+            }
+            //redundancy just in case:
+            if (post_processed_path.back() != path_.back()) {
+                post_processed_path.push_back(path_.back()); // add last point to post processed path
+            }
+
+            std::cout << "post processed path: {";
+            for (size_t i = 0; i < post_processed_path.size(); ++i) {
+                std::cout << post_processed_path[i] << ";" << std::endl;
+            }
+            std::cout << "}" << std::endl;
+
+            path_ = post_processed_path;
+        }
         /**
          * Find turning points on a path // helper function for cubic hermite splines smoother
          */
