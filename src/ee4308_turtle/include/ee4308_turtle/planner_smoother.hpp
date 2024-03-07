@@ -203,7 +203,7 @@ namespace ee4308::turtle
                 if (expanded_node->cell == goal_cell)
                 { // goal found. return path
                     foundPath(expanded_node, goal_coord);
-                    AStarPostProcessing2();
+                    AStarPostProcessing();
                     break; // break to clear open_list
                 }
 
