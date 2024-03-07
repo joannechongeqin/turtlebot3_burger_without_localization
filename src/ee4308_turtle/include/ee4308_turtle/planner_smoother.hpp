@@ -266,7 +266,7 @@ namespace ee4308::turtle
                     V2 next_point = los.next();
                     // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
                     int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
-                    if (cost > 0) { // if next point is not empty cell, no los
+                    if (cost > 3) { // if next point is not empty cell, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
                         from_point_idx++;
                         post_processed_path.push_back(path_[i]);
@@ -468,8 +468,8 @@ namespace ee4308::turtle
             V2 cell = inflation_layer_.worldToCell(point);
             long idx = inflation_layer_.cellToIdx(cell);
             int cost = inflation_layer_(idx);
-            // std::cout << point << " with cost " << cost << std::endl;
-            return cost <= params_.path_ok_cost_threshold;
+            std::cout << point << " with cost " << cost << std::endl;
+            return cost < params_.path_ok_cost_threshold;
         }
 
         /**

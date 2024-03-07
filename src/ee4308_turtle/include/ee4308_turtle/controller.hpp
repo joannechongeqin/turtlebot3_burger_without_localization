@@ -423,11 +423,14 @@ namespace ee4308::turtle
             // Proximity Heuristic
             double prox_lin_vel = proximity_heuristic(ranges, lin_vel);
 
+            lin_vel = std::min(curv_lin_vel, prox_lin_vel);
+
             // reverse the robot if waypoint lies at the back of the robot (x' is negative)
             if (xx < 0) {
                 lin_vel = -lin_vel;
                 ang_vel *= sgn(lin_vel) * sgn(curvature);
             }
+            // std::cout << curvature << ", " << lin_vel << ", " << ang_vel << std::endl;
 
 
             // ==== end of FIXME ====
