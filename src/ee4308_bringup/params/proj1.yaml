@@ -24,10 +24,10 @@ turtle:
     ros__parameters:
       topics:
         plan: "plan" # {string} topic to publish the path to, after a service request is completed.
-        check_path_ok: "check_path_ok" # {string} the service name to check if a path is ok
       services:
         get_inflation_layer: "get_inflation_layer" # {string} service name to request for the inflation layer
         get_plan: "get_plan" # {string} service name to service a plan request.
+        check_path_ok: "check_path_ok" # {string} the service name to check if a path is ok
       frame_id: "map" # The parent tf2 frame of the path.
       spline_vel: 0.2 # {double} The boundary velocity for the cubic or quintic spline.
       dt: 0.2 # {double} The time step for the cubic or quintic spline.

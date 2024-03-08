@@ -60,85 +60,64 @@ namespace ee4308::turtle
         /**
          * main run loop
          */
-        void run(V2d rbt_pos, double rbt_ang)
+void run(V2d rbt_pos, double rbt_ang)
+{
+    rclcpp::Rate rate(params_.frequency);
+    rclcpp::Time last_estimate = now();
+
+    double prev_wheel_left = wheel_left;   // when the hardware starts in proj 1, wheel_left can be non zero.
+    double prev_wheel_right = wheel_right; // when the hardware starts in proj 1, wheel_right can be non zero.
+    double lin_vel = 0, ang_vel = 0;
+    double wheel_change_left, wheel_change_right, lin_vel_imu, lin_vel_wheel, ang_vel_imu, ang_vel_wheel;
+    while (rclcpp::ok() == true)
+    {
+        // call all or some of the callbacks.
+        rclcpp::spin_some(get_node_base_interface());
+
+        // find the elapsed time
+        double elapsed = (now() - last_estimate).seconds(); // the amount of time elapsed.
+        if (elapsed < THRES)
+            continue; // ignore if the elapsed time is close to zero.
+        last_estimate = now();
+
+        // // ===== FIXME =====
+        wheel_change_left = wheel_left - prev_wheel_left;
+        prev_wheel_left = wheel_left; // update wheel
+
+        wheel_change_right = wheel_right - prev_wheel_right;
+        prev_wheel_right = wheel_right; // update wheel
+
+        lin_vel_wheel = params_.wheel_radius / 2 / elapsed * (wheel_change_right + wheel_change_left);
+        lin_vel_imu = lin_vel + imu_lin_acc * elapsed;
+        lin_vel = params_.imu_lin_gain * lin_vel_imu + (1 - params_.imu_lin_gain) * lin_vel_wheel;
+
+        ang_vel_wheel = params_.wheel_radius / params_.axle_track / elapsed * (wheel_change_right - wheel_change_left);
+        ang_vel_imu = imu_ang_vel;
+        ang_vel = params_.imu_ang_gain * ang_vel_imu + (1 - params_.imu_ang_gain) * ang_vel_wheel;
+
+        if (abs(ang_vel) > params_.straight_thres)
         {
-            rclcpp::Rate rate(params_.frequency);
-            rclcpp::Time last_estimate = now();
-
-            double prev_wheel_left = wheel_left;   // when the hardware starts in proj 1, wheel_left can be non zero.
-            double prev_wheel_right = wheel_right; // when the hardware starts in proj 1, wheel_right can be non zero.
-            double lin_vel = 0, ang_vel = 0;
-            double wheel_change_left, wheel_change_right, lin_vel_imu, lin_vel_wheel, ang_vel_imu, ang_vel_wheel;
-            while (rclcpp::ok() == true)
-            {
-                // call all or some of the callbacks.
-                rclcpp::spin_some(get_node_base_interface());
-
-                // find the elapsed time
-                double elapsed = (now() - last_estimate).seconds(); // the amount of time elapsed.
-                if (elapsed < THRES)
-                    continue; // ignore if the elapsed time is close to zero.
-                last_estimate = now();
-
-                // // ===== FIXME =====
-                wheel_change_left = wheel_left - prev_wheel_left;
-                prev_wheel_left = wheel_left; // update wheel
-
-                wheel_change_right = wheel_right - prev_wheel_right;
-                prev_wheel_right = wheel_right; // update wheel
-
-                lin_vel_wheel = params_.wheel_radius / 2 / elapsed * (wheel_change_right + wheel_change_left);
-                lin_vel_imu = lin_vel + imu_lin_acc * elapsed;
-                lin_vel = params_.imu_lin_gain * lin_vel_imu + (1 - params_.imu_lin_gain) * lin_vel_wheel;
-
-                ang_vel_wheel = params_.wheel_radius / params_.axle_track / elapsed * (wheel_change_right - wheel_change_left);
-                ang_vel_imu = imu_ang_vel;
-                ang_vel = params_.imu_ang_gain * ang_vel_imu + (1 - params_.imu_ang_gain) * ang_vel_wheel;
-
-                if (abs(ang_vel) > params_.straight_thres)
-                {
-                    double new_rbt_ang = rbt_ang + ang_vel * elapsed;
-                    double r_t = lin_vel / ang_vel;
-                    rbt_pos.x = rbt_pos.x + r_t * (-sin(rbt_ang) + sin(new_rbt_ang));
-                    rbt_pos.y = rbt_pos.y + r_t * (cos(rbt_ang) - cos(new_rbt_ang));
-                    rbt_ang = new_rbt_ang;
-                }
-                else
-                {
-                    rbt_pos.x = rbt_pos.x + lin_vel * cos(rbt_ang) * elapsed;
-                    rbt_pos.y = rbt_pos.y + lin_vel * sin(rbt_ang) * elapsed;
-                    rbt_ang = rbt_ang + ang_vel * elapsed;
-                }
-
-                // lin_vel_wheel = params_.wheel_radius * 1;
-                // lin_vel_imu = elapsed * imu_lin_acc;
-                // lin_vel = params_.imu_lin_gain * lin_vel_imu + (1 - params_.imu_lin_gain) * lin_vel_wheel;
-
-                // ang_vel_wheel = params_.wheel_radius / params_.axle_track;
-                // ang_vel_imu = imu_ang_vel;
-                // ang_vel = params_.imu_ang_gain * ang_vel_imu;
-
-                // if (ang_vel_imu < abs(params_.straight_thres))
-                // {
-                //     rbt_pos.x = sin(rbt_pos.x);
-                //     rbt_pos.y = rbt_pos.y + elapsed / 10;
-                //     rbt_ang = rbt_ang + elapsed * 2;
-                // }
-                // else
-                // {
-                //     rbt_pos.x = sin(rbt_pos.x);
-                //     rbt_pos.y = rbt_pos.y + elapsed / 10;
-                //     rbt_ang = rbt_ang + elapsed * 10;
-                // }
-                // ===== end of FIXME =====
-
-                // publish
-                publishPose(rbt_pos, rbt_ang);
-
-                // sleep for frequency
-                rate.sleep();
-            }
+            double new_rbt_ang = rbt_ang + ang_vel * elapsed;
+            double r_t = lin_vel / ang_vel;
+            rbt_pos.x = rbt_pos.x + r_t * (-sin(rbt_ang) + sin(new_rbt_ang));
+            rbt_pos.y = rbt_pos.y + r_t * (cos(rbt_ang) - cos(new_rbt_ang));
+            rbt_ang = new_rbt_ang;
         }
+        else
+        {
+            rbt_pos.x = rbt_pos.x + lin_vel * cos(rbt_ang) * elapsed;
+            rbt_pos.y = rbt_pos.y + lin_vel * sin(rbt_ang) * elapsed;
+            rbt_ang = rbt_ang + ang_vel * elapsed;
+        }
+        // ===== end of FIXME =====
+
+        // publish
+        publishPose(rbt_pos, rbt_ang);
+
+        // sleep for frequency
+        rate.sleep();
+    }
+}
 
     private:
         /**
