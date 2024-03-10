@@ -12,8 +12,8 @@ turtle:
         imu: "imu" # {string} the topic to subscribe to the tbot's imu
         wheels: "joint_states" # {string} the topic to subscribe to the tbot's wheel encoders.
         pose: "pose" # {string} the topic to publish the estimated pose.
-      imu_lin_gain: 0.015 # {double} the amount of imu linear gain, between 0 and 1.
-      imu_ang_gain: 0.015 # {double} the amount of imu angular gain, between 0 and 1.
+      imu_lin_gain: 0.02 # {double} the amount of imu linear gain, between 0 and 1.
+      imu_ang_gain: 0.01 # {double} the amount of imu angular gain, between 0 and 1.
       frequency: 40. # {double} how often the robot's motion is estimated (Hz).
       wheel_radius: 0.033 # {double} the wheel radius (m).
       axle_track: 0.16 # {double} the axle track (m).
