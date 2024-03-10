@@ -422,6 +422,8 @@ namespace ee4308::turtle
                 ang_vel *= sgn(lin_vel) * sgn(curvature);
             }
 
+            std::cout << "Linear velocity is " << lin_vel << std::endl;
+
             // Curvature Heuristic
             // std::cout << "Curvature: " << curvature << std::endl;
             double curvature_lin_vel = curvature_heuristic(curvature, lin_vel);
@@ -430,9 +432,14 @@ namespace ee4308::turtle
             double proximity_lin_vel = proximity_heuristic(ranges, lin_vel);
             
             std::cout << "curvature_lin_vel: " << curvature_lin_vel << ", proximity_lin_vel: " << proximity_lin_vel << std::endl;
-            lin_vel = std::min(curvature_lin_vel, proximity_lin_vel);
+            if (lin_vel != curvature_lin_vel || lin_vel != proximity_lin_vel){
+                lin_vel = std::min(curvature_lin_vel, proximity_lin_vel);
+                ang_vel = lin_vel * curvature;
+            }
             std::cout << "final_lin_vel: " << lin_vel << std::endl;
-            ang_vel = lin_vel * curvature;
+
+
+            
 
             // ==== end of FIXME ====
 
