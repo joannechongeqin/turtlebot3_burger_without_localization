@@ -266,9 +266,9 @@ namespace ee4308::turtle
                     V2 next_point = los.next();
                     // std::cout << "checking if " << next_point << " is within inflation layer" << std::endl;
                     int cost = inflation_layer_(inflation_layer_.cellToIdx(next_point));
-                    if (cost > 0) { // if next point is not empty cell, no los
+                    if (cost > 2) { // if next point is not empty cell, no los
                         // std::cout <<  next_point << " is within inflation layer with cost " << cost << std::endl;
-                        from_point_idx++;
+                        from_point_idx = i;
                         post_processed_path.push_back(path_[i]);
                         // std::cout << "adding " << path_[i] << " to post processed path" << std::endl;
                         break;
@@ -287,7 +287,6 @@ namespace ee4308::turtle
             path_ = post_processed_path;
             
         }
-
 
         /**
          * Find turning points on a path // helper function for cubic hermite splines smoother
@@ -401,7 +400,7 @@ namespace ee4308::turtle
          * assume points at regular intervals aka A* path
          * TODO: if Theta* neede interpolate so that points are regularly spaced
          */
-        std::vector<V2d> savitsky_golay_smoother(const std::vector<V2d> &path, const int &half_window_size = 2, const int &poly_order = 3) {
+        std::vector<V2d> savitsky_golay_smoother(const std::vector<V2d> &path, const int &half_window_size, const int &poly_order) {
             const int m = half_window_size, p = poly_order; // default cubic polynomial over 5 points
             const int row_size  = 2 * m + 1, col_size = p + 1;
             Eigen::MatrixXd J(row_size, col_size); // Vandermonde matrix, which is a (2m+1)×(p+1) matrix
