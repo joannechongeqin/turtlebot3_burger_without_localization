@@ -1,4 +1,4 @@
-# EE4308_AY2324_Sem2_Proj_1 - Turtlebot3 Burger Without Localization
+# Turtlebot3 Burger Without Localization
 ## Features
 - Path planner: A* with post processing
 - Smoother: cubic Hermite spline (in use), Savitsky-Golay moving average (implemented but not in use)
@@ -9,8 +9,8 @@
 
 ## How to Run
 ```shell
-git clone https://github.com/joannechongeqin/ee4308_proj1.git
-cd ee4308_proj1
+git clone https://github.com/turtlebot3_burger_without_localization/turtlebot3_burger_without_localization.git
+cd turtlebot3_burger_without_localization
 . bd.sh
 . run.sh
 ```
