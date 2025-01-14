@@ -9,7 +9,7 @@
 
 ## How to Run
 ```shell
-git clone https://github.com/turtlebot3_burger_without_localization/turtlebot3_burger_without_localization.git
+git clone https://github.com/joannechongeqin/turtlebot3_burger_without_localization.git
 cd turtlebot3_burger_without_localization
 . bd.sh
 . run.sh
